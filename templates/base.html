@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Capital Gains AI{% endblock %}</title>
+    <style>
+        /* ============================================
+           BASE LAYOUT — used by ALL pages
+           ============================================ */
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f0f4f8;
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Top Navbar ─────────────────────────────── */
+        .navbar {
+            background: #1a237e;
+            color: white;
+            padding: 0 24px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .navbar-brand {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+            text-decoration: none;
+        }
+
+        .navbar-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            font-size: 13px;
+            opacity: 0.85;
+        }
+
+        .navbar-right a {
+            color: white;
+            text-decoration: none;
+            opacity: 0.85;
+            transition: opacity 0.2s;
+        }
+
+        .navbar-right a:hover { opacity: 1; }
+
+        /* ── Page wrapper below navbar ───────────────── */
+        .page-wrapper {
+            display: flex;
+            margin-top: 56px;
+            min-height: calc(100vh - 56px);
+        }
+
+        /* ── Sidebar ─────────────────────────────────── */
+        .sidebar {
+            width: 220px;
+            background: #1e2d5a;
+            color: white;
+            position: fixed;
+            top: 56px;
+            left: 0;
+            bottom: 0;
+            overflow-y: auto;
+            padding: 24px 0;
+            z-index: 99;
+            flex-shrink: 0;
+        }
+
+        .sidebar-section-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.4);
+            padding: 16px 20px 6px;
+            font-weight: 700;
+        }
+
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 11px 20px;
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.15s;
+            border-left: 3px solid transparent;
+            cursor: pointer;
+        }
+
+        .sidebar-item:hover {
+            background: rgba(255,255,255,0.08);
+            color: white;
+            border-left-color: rgba(255,255,255,0.3);
+        }
+
+        .sidebar-item.active {
+            background: rgba(255,255,255,0.12);
+            color: white;
+            border-left-color: #7986cb;
+            font-weight: 600;
+        }
+
+        .sidebar-item .icon {
+            font-size: 16px;
+            width: 20px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .sidebar-divider {
+            height: 1px;
+            background: rgba(255,255,255,0.08);
+            margin: 12px 20px;
+        }
+
+        .sidebar-client-box {
+            margin: 8px 12px 16px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 8px;
+            padding: 12px 14px;
+        }
+
+        .sidebar-client-box .client-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: rgba(255,255,255,0.4);
+            margin-bottom: 4px;
+        }
+
+        .sidebar-client-box .client-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .sidebar-client-box .client-pan {
+            font-size: 11px;
+            color: rgba(255,255,255,0.5);
+            font-family: monospace;
+            margin-top: 2px;
+        }
+
+        .fy-pill {
+            display: inline-block;
+            background: rgba(121,134,203,0.3);
+            color: #c5cae9;
+            font-size: 11px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            margin: 4px 20px 0;
+        }
+
+        /* ── Main Content ────────────────────────────── */
+        .main-content {
+            margin-left: 220px;
+            flex: 1;
+            padding: 28px;
+            min-width: 0;
+        }
+
+        /* ── Page Header ─────────────────────────────── */
+        .page-header {
+            margin-bottom: 24px;
+        }
+
+        .page-header h1 {
+            font-size: 22px;
+            color: #1a237e;
+            font-weight: 700;
+        }
+
+        .page-header .breadcrumb {
+            font-size: 12px;
+            color: #aaa;
+            margin-bottom: 6px;
+        }
+
+        .page-header .breadcrumb a {
+            color: #7986cb;
+            text-decoration: none;
+        }
+
+        .page-header .breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+        .page-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        /* ── Flash Messages ──────────────────────────── */
+        .flash-list {
+            margin-bottom: 20px;
+        }
+
+        .flash {
+            padding: 11px 16px;
+            border-radius: 7px;
+            margin-bottom: 8px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .flash.success {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            color: #2e7d32;
+        }
+
+        .flash.error {
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+            color: #c62828;
+        }
+
+        /* ── Cards ───────────────────────────────────── */
+        .card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+
+        .card-header {
+            padding: 14px 20px;
+            font-size: 14px;
+            font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .card-header.blue   { background: #1a237e; color: white; }
+        .card-header.green  { background: #2e7d32; color: white; }
+        .card-header.teal   { background: #009688; color: white; }
+        .card-header.orange { background: #e65100; color: white; }
+        .card-header.purple { background: #6a1b9a; color: white; }
+        .card-header.plain  { background: #f9fafb; color: #333; }
+
+        .card-body { padding: 20px; }
+
+        .card.border-blue   { border-top: 4px solid #1a237e; }
+        .card.border-green  { border-top: 4px solid #2e7d32; }
+        .card.border-orange { border-top: 4px solid #ff9800; }
+        .card.border-purple { border-top: 4px solid #6a1b9a; }
+        .card.border-teal   { border-top: 4px solid #009688; }
+
+        /* ── Buttons ─────────────────────────────────── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 9px 18px;
+            border-radius: 7px;
+            font-size: 13px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+
+        .btn:hover { opacity: 0.88; transform: translateY(-1px); }
+        .btn:active { transform: translateY(0); }
+
+        .btn-primary { background: #1a237e; color: white; }
+        .btn-success { background: #2e7d32; color: white; }
+        .btn-danger  { background: #c62828; color: white; }
+        .btn-teal    { background: #009688; color: white; }
+        .btn-purple  { background: #6a1b9a; color: white; }
+        .btn-orange  { background: #e65100; color: white; }
+        .btn-outline {
+            background: white;
+            color: #1a237e;
+            border: 2px solid #1a237e;
+        }
+        .btn-outline-green {
+            background: white;
+            color: #2e7d32;
+            border: 2px solid #2e7d32;
+        }
+
+        .btn-sm { padding: 5px 12px; font-size: 12px; }
+        .btn-lg { padding: 12px 28px; font-size: 15px; }
+        .btn-full { width: 100%; justify-content: center; }
+
+        /* ── Forms ───────────────────────────────────── */
+        .form-group { margin-bottom: 14px; }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            color: #666;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1.5px solid #e0e0e0;
+            border-radius: 7px;
+            font-size: 13px;
+            font-family: inherit;
+            color: #333;
+            background: white;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #1a237e;
+            box-shadow: 0 0 0 3px rgba(26,35,126,0.08);
+        }
+
+        /* ── Tables ──────────────────────────────────── */
+        .table-wrap { overflow-x: auto; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        thead th {
+            background: #f5f6fa;
+            padding: 10px 14px;
+            text-align: left;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            color: #666;
+            border-bottom: 2px solid #eee;
+            white-space: nowrap;
+        }
+
+        tbody td {
+            padding: 10px 14px;
+            border-bottom: 1px solid #f5f5f5;
+            vertical-align: middle;
+        }
+
+        tbody tr:hover { background: #fafbff; }
+
+        /* ── Badges ──────────────────────────────────── */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            gap: 3px;
+        }
+
+        .badge-buy     { background: #e8f5e9; color: #2e7d32; }
+        .badge-sell    { background: #ffebee; color: #c62828; }
+        .badge-buyback { background: #fff3e0; color: #e65100; }
+        .badge-bonus   { background: #e3f2fd; color: #0d47a1; }
+        .badge-split   { background: #fce4ec; color: #880e4f; }
+        .badge-gift    { background: #f3e5f5; color: #6a1b9a; }
+        .badge-inherit { background: #e8eaf6; color: #283593; }
+        .badge-ltcg    { background: #e8f5e9; color: #2e7d32; }
+        .badge-stcg    { background: #fff3e0; color: #e65100; }
+
+        /* ── Stat Cards ──────────────────────────────── */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 10px;
+            padding: 18px 20px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.07);
+            border-left: 4px solid #1a237e;
+        }
+
+        .stat-card.green  { border-left-color: #4caf50; }
+        .stat-card.orange { border-left-color: #ff9800; }
+        .stat-card.purple { border-left-color: #9c27b0; }
+        .stat-card.teal   { border-left-color: #009688; }
+        .stat-card.red    { border-left-color: #f44336; }
+
+        .stat-card .stat-value {
+            font-size: 26px;
+            font-weight: 700;
+            color: #1a237e;
+            line-height: 1;
+        }
+
+        .stat-card .stat-label {
+            font-size: 12px;
+            color: #888;
+            margin-top: 6px;
+        }
+
+        /* ── Empty State ─────────────────────────────── */
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: #aaa;
+        }
+
+        .empty-state .empty-icon { font-size: 40px; margin-bottom: 12px; }
+        .empty-state h3 { font-size: 18px; color: #888; margin-bottom: 6px; }
+        .empty-state p  { font-size: 13px; margin-bottom: 20px; }
+
+        /* ── Utility ─────────────────────────────────── */
+        .text-muted  { color: #888; font-size: 12px; }
+        .text-small  { font-size: 12px; }
+        .mt-4  { margin-top: 4px; }
+        .mt-8  { margin-top: 8px; }
+        .mt-16 { margin-top: 16px; }
+        .mb-16 { margin-bottom: 16px; }
+        .gap-8 { gap: 8px; }
+        .flex  { display: flex; }
+        .flex-wrap { flex-wrap: wrap; }
+        .align-center { align-items: center; }
+        .justify-between { justify-content: space-between; }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+
+        /* ── Scrollbar ───────────────────────────────── */
+        .sidebar::-webkit-scrollbar { width: 4px; }
+        .sidebar::-webkit-scrollbar-track { background: transparent; }
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.15);
+            border-radius: 4px;
+        }
+
+        /* ── Responsive ──────────────────────────────── */
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main-content { margin-left: 0; padding: 16px; }
+            .form-row { grid-template-columns: 1fr; }
+        }
+
+        @media print {
+            .navbar, .sidebar, .btn-row { display: none !important; }
+            .main-content { margin-left: 0; padding: 0; }
+            body { background: white; }
+        }
+
+        /* ── Extra styles for child pages ───────────── */
+        {% block extra_style %}{% endblock %}
+
+    </style>
+</head>
+<body>
+
+<!-- ══ NAVBAR ══════════════════════════════════════════ -->
+<nav class="navbar">
+    <a href="{{ url_for('dashboard') }}" class="navbar-brand">
+        ⚖️ Capital Gains AI
+    </a>
+    <div class="navbar-right">
+        <span>CA Office Tool</span>
+        <a href="{{ url_for('master_db.master_db_page') }}">📚 Master DB</a>
+        <a href="{{ url_for('chat_general') }}">🤖 AI Chat</a>
+        <a href="{{ url_for('dashboard') }}">📊 Dashboard</a>
+    </div>
+</nav>
+
+<!-- ══ PAGE WRAPPER ════════════════════════════════════ -->
+<div class="page-wrapper">
+
+    <!-- ── SIDEBAR ──────────────────────────────────── -->
+    <aside class="sidebar">
+
+        {% if client is defined and client %}
+        <div class="sidebar-client-box">
+            <div class="client-label">Current Client</div>
+            <div class="client-name">{{ client[1] }}</div>
+            <div class="client-pan">{{ client[2] }}</div>
+        </div>
+        {% if fin_year is defined and fin_year %}
+        <div class="fy-pill">FY {{ fin_year }}</div>
+        {% endif %}
+        <div class="sidebar-divider"></div>
+        {% endif %}
+
+        <div class="sidebar-section-label">Navigation</div>
+
+        <a href="{{ url_for('dashboard') }}"
+           class="sidebar-item {{ 'active' if active_page == 'dashboard' else '' }}">
+            <span class="icon">📊</span> Dashboard
+        </a>
+
+        <a href="{{ url_for('add_client_route') }}"
+           class="sidebar-item {{ 'active' if active_page == 'add_client' else '' }}">
+            <span class="icon">➕</span> Add Client
+        </a>
+
+        <a href="{{ url_for('chat_general') }}"
+           class="sidebar-item {{ 'active' if active_page == 'chat' else '' }}">
+            <span class="icon">🤖</span> AI Tax Chat
+        </a>
+
+        {% if client is defined and client %}
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-section-label">This Client</div>
+
+        <a href="{{ url_for('client_page', client_id=client[0], fin_year=fin_year if fin_year is defined else '2024-25') }}"
+           class="sidebar-item {{ 'active' if active_page == 'client' else '' }}">
+            <span class="icon">📋</span> Transactions
+        </a>
+
+        {% if fin_year is defined and fin_year %}
+        <a href="{{ url_for('calculate', client_id=client[0], fin_year=fin_year) }}"
+           class="sidebar-item {{ 'active' if active_page == 'result' else '' }}">
+            <span class="icon">⚖️</span> Capital Gains
+        </a>
+
+        <a href="{{ url_for('closing_stock_page', client_id=client[0], fin_year=fin_year) }}"
+           class="sidebar-item {{ 'active' if active_page == 'closing_stock' else '' }}">
+            <span class="icon">📦</span> Closing Stock
+        </a>
+        {% endif %}
+
+        <a href="{{ url_for('chat_page', client_id=client[0], fin_year=fin_year if fin_year is defined else '2024-25') }}"
+           class="sidebar-item {{ 'active' if active_page == 'chat_client' else '' }}">
+            <span class="icon">🤖</span> Ask AI
+        </a>
+
+        {% endif %}
+
+    </aside>
+
+    <!-- ── MAIN CONTENT ──────────────────────────────── -->
+    <main class="main-content">
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="flash-list">
+                {% for category, message in messages %}
+                <div class="flash {{ category }}">
+                    {{ '✅' if category == 'success' else '❌' }}
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+
+    </main>
+
+</div>
+
+<!-- ══ SCRIPTS — loaded at bottom of every page ════════ -->
+{% block extra_script %}{% endblock %}
+
+</body>
+</html>

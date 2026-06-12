@@ -1,0 +1,405 @@
+{% extends "base.html" %}
+{% set active_page = "dashboard" %}
+
+{% block title %}Dashboard — Capital Gains AI{% endblock %}
+
+{% block extra_style %}
+<style>
+    .clients-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 20px;
+    }
+
+    .client-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+        border-left: 5px solid #1a237e;
+        padding: 0;
+        overflow: hidden;
+        transition: box-shadow 0.2s, transform 0.15s;
+    }
+
+    .client-card:hover {
+        box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+        transform: translateY(-2px);
+    }
+
+    .client-card-body {
+        padding: 20px 22px;
+    }
+
+    .client-card-name {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1a237e;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .lock-badge {
+        font-size: 13px;
+        background: #fff3e0;
+        color: #e65100;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-weight: 600;
+    }
+
+    .client-card-info {
+        font-size: 12px;
+        color: #999;
+        margin-bottom: 4px;
+    }
+
+    .client-card-stats {
+        display: flex;
+        gap: 12px;
+        margin-top: 12px;
+        margin-bottom: 16px;
+    }
+
+    .client-stat-pill {
+        background: #e8eaf6;
+        color: #1a237e;
+        padding: 4px 12px;
+        border-radius: 14px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .client-card-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .client-card-actions .btn {
+        flex: 1;
+        min-width: 80px;
+        justify-content: center;
+        padding: 10px 14px;
+        font-size: 13px;
+    }
+
+    .client-card-footer {
+        background: #fafafa;
+        padding: 10px 22px;
+        border-top: 1px solid #f0f0f0;
+        display: flex;
+        justify-content: flex-end;
+    }
+
+    /* ── Password Modal ───────────────────────────────── */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .modal-overlay.active {
+        display: flex;
+    }
+
+    .modal-box {
+        background: white;
+        border-radius: 14px;
+        padding: 32px;
+        width: 100%;
+        max-width: 400px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        position: relative;
+    }
+
+    .modal-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1a237e;
+        margin-bottom: 6px;
+    }
+
+    .modal-subtitle {
+        font-size: 13px;
+        color: #888;
+        margin-bottom: 20px;
+    }
+
+    .modal-close {
+        position: absolute;
+        top: 14px; right: 18px;
+        font-size: 20px;
+        cursor: pointer;
+        color: #999;
+        background: none;
+        border: none;
+        line-height: 1;
+    }
+
+    .modal-close:hover {
+        color: #333;
+    }
+
+    /* ── Consolidated Report Button ───────────────────── */
+    .consolidated-btn {
+        background: linear-gradient(135deg, #00695c, #00897b);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: opacity 0.2s;
+    }
+
+    .consolidated-btn:hover {
+        opacity: 0.88;
+        color: white;
+        text-decoration: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="page-header-row">
+        <div>
+            <div class="breadcrumb">Home</div>
+            <h1>📊 Dashboard</h1>
+        </div>
+        <!-- Header buttons — Add Client + Consolidated Report -->
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <a href="{{ url_for('consolidated_report') }}"
+               class="consolidated-btn">
+                📊 Consolidated Report
+            </a>
+            <a href="{{ url_for('add_client_route') }}"
+               class="btn btn-primary btn-lg">
+                ➕ Add New Client
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Row -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-value">{{ clients | length }}</div>
+        <div class="stat-label">Total Clients</div>
+    </div>
+    <div class="stat-card green">
+        <div class="stat-value">{{ clients | sum(attribute=5) }}</div>
+        <div class="stat-label">Total Transactions</div>
+    </div>
+    <div class="stat-card teal">
+        <div class="stat-value">FY 25-26</div>
+        <div class="stat-label">Current Financial Year</div>
+    </div>
+</div>
+
+<!-- Client Cards -->
+{% if clients %}
+
+<div style="margin-bottom:16px; display:flex;
+            justify-content:space-between; align-items:center;">
+    <h2 style="font-size:16px; color:#1a237e; font-weight:700;">
+        👥 All Clients ({{ clients | length }})
+    </h2>
+    <a href="{{ url_for('add_client_route') }}" class="btn btn-primary btn-sm">
+        ➕ Add Client
+    </a>
+</div>
+
+<div class="clients-grid">
+    {% for client in clients %}
+    {# client[7] = has_password — returns 0 or 1 as integer #}
+    {# Must compare with == 1 because Jinja2 treats 0 as false #}
+    {% set has_pwd = (client[7] == 1) %}
+
+    <div class="client-card">
+        <div class="client-card-body">
+
+            <!-- Name + lock badge -->
+            <div class="client-card-name">
+                {{ client[1] }}
+                {% if has_pwd %}
+                <span class="lock-badge">🔒 Protected</span>
+                {% else %}
+                <span style="font-size:12px; color:#aaa; font-weight:400;">
+                    🔓 Open Access
+                </span>
+                {% endif %}
+            </div>
+
+            <!-- PAN removed for privacy -->
+
+            {% if client[3] %}
+            <div class="client-card-info">📧 {{ client[3] }}</div>
+            {% endif %}
+            {% if client[4] %}
+            <div class="client-card-info">📱 {{ client[4] }}</div>
+            {% endif %}
+
+            <div class="client-card-stats">
+                <span class="client-stat-pill">
+                    📋 {{ client[5] }} transaction{{ 's' if client[5] != 1 else '' }}
+                </span>
+            </div>
+
+            <div class="client-card-actions">
+
+                {% if has_pwd %}
+                <!-- Password protected — show modal on click -->
+                <button class="btn btn-primary"
+                        onclick="openModal({{ client[0] }}, '{{ client[1] }}', 'client')">
+                    🔓 Open
+                </button>
+                <button class="btn btn-success"
+                        onclick="openModal({{ client[0] }}, '{{ client[1] }}', 'calculate')">
+                    ⚖️ Calculate
+                </button>
+                <button class="btn btn-teal"
+                        onclick="openModal({{ client[0] }}, '{{ client[1] }}', 'stock')">
+                    📦 Stock
+                </button>
+                {% else %}
+                <!-- No password — open directly -->
+                <a href="{{ url_for('client_page', client_id=client[0]) }}"
+                   class="btn btn-primary">
+                    📂 Open
+                </a>
+                <a href="{{ url_for('calculate', client_id=client[0], fin_year='2024-25') }}"
+                   class="btn btn-success">
+                    ⚖️ Calculate
+                </a>
+                <a href="{{ url_for('closing_stock_page', client_id=client[0], fin_year='2024-25') }}"
+                   class="btn btn-teal">
+                    📦 Stock
+                </a>
+                {% endif %}
+
+            </div>
+        </div>
+
+        <div class="client-card-footer">
+            <form method="POST"
+                  action="{{ url_for('delete_client_route', client_id=client[0]) }}"
+                  onsubmit="return confirm('Delete {{ client[1] }} and ALL their data? This cannot be undone.')">
+                <button type="submit" class="btn btn-danger btn-sm">
+                    🗑️ Delete Client
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% else %}
+
+<!-- Empty State -->
+<div class="card">
+    <div class="card-body">
+        <div class="empty-state">
+            <div class="empty-icon">👥</div>
+            <h3>No clients yet</h3>
+            <p>Add your first client to start calculating capital gains.</p>
+            <a href="{{ url_for('add_client_route') }}"
+               class="btn btn-primary btn-lg">
+                ➕ Add First Client
+            </a>
+        </div>
+    </div>
+</div>
+
+{% endif %}
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- PASSWORD MODAL                                         -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="passwordModal">
+    <div class="modal-box">
+
+        <button class="modal-close" onclick="closeModal()">✕</button>
+
+        <div class="modal-title">🔒 Client Protected</div>
+        <div class="modal-subtitle" id="modalSubtitle">
+            Enter password to open this client
+        </div>
+
+        <form method="POST" id="unlockForm" action="">
+            <input type="hidden" name="next_page" id="modalNextPage" value="client">
+            <input type="hidden" name="fin_year" value="2024-25">
+
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <input class="form-control"
+                       type="password"
+                       name="password"
+                       id="modalPasswordInput"
+                       placeholder="Enter client password"
+                       required
+                       autocomplete="off">
+            </div>
+
+            <div class="btn-row" style="margin-top:16px; margin-bottom:0;">
+                <button type="submit" class="btn btn-primary" style="flex:1;">
+                    🔓 Unlock
+                </button>
+                <button type="button" class="btn btn-outline"
+                        onclick="closeModal()">
+                    Cancel
+                </button>
+            </div>
+        </form>
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_script %}
+<script>
+    // Open password modal
+    function openModal(clientId, clientName, nextPage) {
+        document.getElementById("modalSubtitle").textContent =
+            "Enter password to open " + clientName;
+        document.getElementById("modalNextPage").value = nextPage;
+        document.getElementById("unlockForm").action =
+            "/unlock_client/" + clientId;
+        document.getElementById("modalPasswordInput").value = "";
+        document.getElementById("passwordModal").classList.add("active");
+        // Focus password field automatically
+        setTimeout(function() {
+            document.getElementById("modalPasswordInput").focus();
+        }, 100);
+    }
+
+    // Close modal
+    function closeModal() {
+        document.getElementById("passwordModal").classList.remove("active");
+    }
+
+    // Close modal if clicking outside the box
+    document.getElementById("passwordModal").addEventListener("click", function(e) {
+        if (e.target === this) closeModal();
+    });
+
+    // Close modal on Escape key
+    document.addEventListener("keydown", function(e) {
+        if (e.key === "Escape") closeModal();
+    });
+</script>
+{% endblock %}

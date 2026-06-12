@@ -1,0 +1,1067 @@
+{% extends "base.html" %}
+{% set active_page = "client" %}
+
+{% block title %}Review Transactions — {{ client[1] }}{% endblock %}
+
+{% block extra_style %}
+<style>
+    .source-badge {
+        display: inline-block;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 700;
+        margin-left: 8px;
+    }
+
+    .source-badge.pdf   { background: #6a1b9a; }
+    .source-badge.excel { background: #2e7d32; }
+
+    .stats-bar {
+        display: flex;
+        gap: 14px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .review-stat {
+        background: white;
+        border-radius: 8px;
+        padding: 12px 20px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        flex: 1;
+        min-width: 130px;
+        text-align: center;
+    }
+
+    .review-stat .num {
+        font-size: 22px;
+        font-weight: 700;
+        color: #1a237e;
+    }
+
+    .review-stat .lbl {
+        font-size: 11px;
+        color: #888;
+        margin-top: 3px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .review-stat.green  .num { color: #2e7d32; }
+    .review-stat.red    .num { color: #c62828; }
+    .review-stat.orange .num { color: #e65100; }
+
+    .action-bar {
+        background: white;
+        border-radius: 10px;
+        padding: 14px 18px;
+        margin-bottom: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .action-bar .msg { font-size: 13px; color: #555; }
+
+    .table-card {
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        margin-bottom: 20px;
+    }
+
+    .table-title {
+        background: #1a237e;
+        color: white;
+        padding: 14px 20px;
+        font-size: 14px;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .scroll-table { overflow-x: auto; }
+
+    .review-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+    }
+
+    .review-table thead th {
+        background: #f5f6fa;
+        padding: 9px 8px;
+        text-align: left;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        color: #666;
+        border-bottom: 2px solid #eee;
+        white-space: nowrap;
+    }
+
+    .review-table thead th.stt-header {
+        background: #fff8e1;
+        color: #e65100;
+    }
+
+    .review-table tbody td {
+        padding: 5px 8px;
+        border-bottom: 1px solid #f5f5f5;
+        vertical-align: top;
+    }
+
+    .stt-td { background: #fffde7; }
+
+    .review-table tbody tr.row-high-risk td {
+        background: #ffebee !important;
+    }
+    .review-table tbody tr.row-high-risk .stt-td {
+        background: #ffe0e0 !important;
+    }
+    .review-table tbody tr.row-medium-risk td {
+        background: #fff8e1 !important;
+    }
+    .review-table tbody tr.row-medium-risk .stt-td {
+        background: #fff3c4 !important;
+    }
+
+    .edit-input {
+        width: 100%;
+        padding: 6px 8px;
+        border: 1.5px solid transparent;
+        border-radius: 4px;
+        font-size: 12px;
+        font-family: inherit;
+        background: transparent;
+        transition: all 0.2s;
+    }
+
+    .edit-input:hover {
+        border-color: #c5cae9;
+        background: #fafafa;
+    }
+
+    .edit-input:focus {
+        outline: none;
+        border-color: #1976d2;
+        background: white;
+        box-shadow: 0 0 0 2px rgba(25,118,210,0.15);
+    }
+
+    .edit-input.small { width: 75px; }
+    .edit-input.med   { width: 100px; }
+    .edit-input.date  { width: 130px; }
+    .edit-input.text  { width: 150px; }
+    .edit-input.num   { text-align: right; }
+
+    .edit-select {
+        padding: 6px 8px;
+        border: 1.5px solid transparent;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 700;
+        background: transparent;
+        cursor: pointer;
+    }
+
+    .edit-select:hover { border-color: #c5cae9; }
+    .edit-select:focus { outline: none; border-color: #1976d2; }
+
+    .row-num {
+        text-align: center;
+        font-weight: 700;
+        color: #aaa;
+    }
+
+    .del-row-btn {
+        background: #ffebee;
+        color: #c62828;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .del-row-btn:hover { background: #ffcdd2; }
+
+    .similar-warning {
+        display: none;
+        background: #fff3e0;
+        border-left: 3px solid #ff9800;
+        border-radius: 4px;
+        padding: 6px 8px;
+        margin-top: 4px;
+        font-size: 11px;
+        color: #e65100;
+        line-height: 1.4;
+        max-width: 240px;
+    }
+
+    .similar-warning strong {
+        color: #bf360c;
+        cursor: pointer;
+        text-decoration: underline;
+    }
+
+    .similar-warning strong:hover { color: #d84315; }
+
+    /* ────── Day 16: Master DB Suggestion Box ────── */
+    .master-db-box {
+        display: none;
+        background: #e3f2fd;
+        border-left: 3px solid #1976d2;
+        border-radius: 4px;
+        padding: 8px 10px;
+        margin-top: 4px;
+        font-size: 11px;
+        color: #0d47a1;
+        line-height: 1.5;
+        max-width: 260px;
+    }
+
+    .master-db-box .mdb-title {
+        font-weight: 700;
+        color: #0d47a1;
+        margin-bottom: 4px;
+    }
+
+    .master-db-box label {
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 3px;
+    }
+
+    .master-db-box label:hover {
+        background: rgba(25,118,210,0.1);
+    }
+
+    .master-db-box input[type="checkbox"],
+    .master-db-box input[type="radio"] {
+        margin-top: 2px;
+        flex-shrink: 0;
+    }
+
+    .master-db-box .official-name {
+        font-weight: 600;
+        color: #0d47a1;
+    }
+
+    .master-db-box .isin-tag {
+        font-family: monospace;
+        font-size: 10px;
+        color: #555;
+        display: block;
+        margin-top: 2px;
+    }
+
+    .master-db-box .match-type {
+        display: inline-block;
+        font-size: 9px;
+        font-weight: 700;
+        padding: 1px 5px;
+        border-radius: 8px;
+        margin-left: 4px;
+        text-transform: uppercase;
+    }
+
+    .match-type.isin     { background: #2e7d32; color: white; }
+    .match-type.alias    { background: #1976d2; color: white; }
+    .match-type.contains { background: #ff9800; color: white; }
+
+    .company-cell { position: relative; min-width: 180px; }
+
+    .warning-box {
+        background: #fff8e1;
+        border-left: 4px solid #ffc107;
+        border-radius: 6px;
+        padding: 13px 16px;
+        margin-bottom: 16px;
+        font-size: 13px;
+        color: #b8860b;
+    }
+
+    .warning-box strong { color: #e65100; }
+
+    .info-tip {
+        background: #e3f2fd;
+        border-left: 4px solid #1976d2;
+        border-radius: 6px;
+        padding: 11px 14px;
+        margin-bottom: 16px;
+        font-size: 12px;
+        color: #0d47a1;
+    }
+
+    .stt-info-tip {
+        background: #fff8e1;
+        border-left: 4px solid #ffa000;
+        border-radius: 6px;
+        padding: 11px 14px;
+        margin-bottom: 16px;
+        font-size: 12px;
+        color: #5d4037;
+    }
+
+    .verify-banner {
+        border-radius: 10px;
+        padding: 18px 22px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        font-size: 14px;
+    }
+
+    .verify-banner.match {
+        background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+        border-left: 5px solid #2e7d32;
+        color: #1b5e20;
+    }
+
+    .verify-banner.minor_mismatch {
+        background: linear-gradient(135deg, #fff8e1, #ffe082);
+        border-left: 5px solid #f57c00;
+        color: #e65100;
+    }
+
+    .verify-banner.mismatch {
+        background: linear-gradient(135deg, #ffebee, #ffcdd2);
+        border-left: 5px solid #c62828;
+        color: #b71c1c;
+        animation: pulse-red 2s infinite;
+    }
+
+    .verify-banner.no_pdf_total {
+        background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+        border-left: 5px solid #1976d2;
+        color: #0d47a1;
+    }
+
+    @keyframes pulse-red {
+        0%, 100% { box-shadow: 0 2px 8px rgba(198,40,40,0.2); }
+        50%      { box-shadow: 0 2px 16px rgba(198,40,40,0.4); }
+    }
+
+    .verify-banner .title {
+        font-size: 16px;
+        font-weight: 700;
+        margin-bottom: 6px;
+    }
+
+    .verify-banner .breakdown {
+        display: flex;
+        gap: 24px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+        font-size: 13px;
+    }
+
+    .verify-banner .breakdown-item {
+        background: rgba(255,255,255,0.6);
+        padding: 6px 12px;
+        border-radius: 6px;
+    }
+
+    .verify-banner .breakdown-item strong {
+        display: block;
+        font-size: 16px;
+        margin-top: 2px;
+    }
+
+    .row-warnings {
+        background: #fff3e0;
+        border-left: 3px solid #ff9800;
+        border-radius: 4px;
+        padding: 6px 8px;
+        margin-top: 4px;
+        font-size: 11px;
+        color: #e65100;
+        line-height: 1.4;
+    }
+
+    .row-warnings.high {
+        background: #ffebee;
+        border-left-color: #c62828;
+        color: #b71c1c;
+    }
+
+    .risk-badge {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 8px;
+        margin-left: 4px;
+    }
+
+    .risk-badge.high {
+        background: #c62828;
+        color: white;
+    }
+
+    .risk-badge.medium {
+        background: #ff9800;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if import_warnings %}
+<div style="background: #FFF8E1;
+            border-left: 5px solid #F9A825;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 20px;">
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <div style="font-weight: 600; color: #6D4C00; font-size: 15px;">
+      ⚠️ {{ import_warnings|length }} row(s) imported with warnings — please verify below
+    </div>
+    <button type="button"
+            onclick="var w = document.getElementById('warningList');
+                     w.style.display = w.style.display === 'none' ? 'block' : 'none';
+                     this.textContent = w.style.display === 'none' ? 'Show details ▼' : 'Hide details ▲';"
+            style="background: #F9A825; color: white; border: none;
+                   padding: 6px 14px; border-radius: 4px; cursor: pointer;
+                   font-size: 13px; font-weight: 500;">
+      Show details ▼
+    </button>
+  </div>
+
+  <div id="warningList" style="display: none; margin-top: 12px;
+                                background: white; padding: 12px 16px;
+                                border-radius: 6px; max-height: 250px;
+                                overflow-y: auto;">
+    <ul style="margin: 0; padding-left: 20px; color: #6D4C00; font-size: 13px;">
+      {% for w in import_warnings %}
+        <li style="margin-bottom: 6px;">{{ w }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endif %}
+
+<div class="page-header">
+    <div class="breadcrumb">
+        <a href="{{ url_for('dashboard') }}">Dashboard</a> ›
+        <a href="{{ url_for('client_page', client_id=client[0], fin_year=fin_year) }}">
+            {{ client[1] }}
+        </a> › Review Import
+    </div>
+    <div class="page-header-row">
+        <div>
+            <h1>
+                {% if source == 'excel' %}
+                    📊 Excel Import
+                {% else %}
+                    🤖 AI Extracted
+                {% endif %}
+                — Review & Edit
+                {% if source == 'excel' %}
+                    <span class="source-badge excel">EXCEL</span>
+                {% else %}
+                    <span class="source-badge pdf">AI</span>
+                {% endif %}
+            </h1>
+            <div class="text-muted mt-4">
+                Client: {{ client[1] }} · PAN: {{ client[2] }} · FY: {{ fin_year }}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if verification and source == 'pdf' %}
+<div class="verify-banner {{ verification.match_status }}">
+    <div class="title">
+        {{ verification.status_message }}
+    </div>
+
+    {% if verification.pdf_net_amount > 0 %}
+    <div class="breakdown">
+        <div class="breakdown-item">
+            📄 PDF Net Amount
+            <strong>₹{{ "{:,.2f}".format(verification.pdf_net_amount) }}
+            {{ verification.pdf_net_direction }}</strong>
+        </div>
+        <div class="breakdown-item">
+            🤖 AI Calculated Net
+            <strong>₹{{ "{:,.2f}".format(verification.ai_net_amount) }}
+            {{ verification.ai_direction }}</strong>
+        </div>
+        <div class="breakdown-item">
+            📊 Difference
+            <strong>₹{{ "{:,.2f}".format(verification.difference) }}</strong>
+        </div>
+        {% if verification.total_stt > 0 %}
+        <div class="breakdown-item">
+            💰 Total STT (PDF)
+            <strong>₹{{ "{:,.2f}".format(verification.total_stt) }}</strong>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if source == 'excel' %}
+<div class="warning-box">
+    📊 <strong>Review your Excel data!</strong>
+    Verify each row before importing. Click any cell to edit. Use ✕ to remove rows.
+</div>
+{% else %}
+<div class="warning-box">
+    ⚠️ <strong>AI may make mistakes!</strong>
+    Carefully review each row including STT values. Click any cell to edit. Use ✕ to remove wrong rows.
+</div>
+{% endif %}
+
+<div class="info-tip">
+    💡 <strong>Tip:</strong> Orange warnings = similar name typo check.
+    Blue boxes = Master DB matches (tick to use the official name + ISIN).
+</div>
+
+<div class="stt-info-tip">
+    ℹ️ <strong>STT column:</strong> Securities Transaction Tax shown separately
+    (Section 40(a)(ib) — NOT deductible from capital gains).
+</div>
+
+{% set buy_count     = transactions | selectattr("type", "equalto", "BUY") | list | length %}
+{% set sell_count    = transactions | selectattr("type", "equalto", "SELL") | list | length %}
+{% set buyback_count = transactions | selectattr("type", "equalto", "BUYBACK") | list | length %}
+{% set bonus_count   = transactions | selectattr("type", "equalto", "BONUS") | list | length %}
+{% set total_amount  = transactions | sum(attribute="amount") %}
+{% set total_stt     = transactions | sum(attribute="stt") %}
+
+<div class="stats-bar">
+    <div class="review-stat">
+        <div class="num" id="totalCount">{{ transactions | length }}</div>
+        <div class="lbl">Total Rows</div>
+    </div>
+    <div class="review-stat green">
+        <div class="num">{{ buy_count }}</div>
+        <div class="lbl">BUY</div>
+    </div>
+    <div class="review-stat red">
+        <div class="num">{{ sell_count + buyback_count }}</div>
+        <div class="lbl">SELL/BUYBACK</div>
+    </div>
+    <div class="review-stat">
+        <div class="num">{{ bonus_count }}</div>
+        <div class="lbl">BONUS</div>
+    </div>
+    <div class="review-stat">
+        <div class="num">₹{{ "{:,.0f}".format(total_amount) }}</div>
+        <div class="lbl">Total Value</div>
+    </div>
+    <div class="review-stat orange">
+        <div class="num">₹{{ "{:,.0f}".format(total_stt) }}</div>
+        <div class="lbl">Total STT</div>
+    </div>
+</div>
+
+<form method="POST"
+      action="{{ url_for('confirm_pdf_import', client_id=client[0]) }}"
+      id="editForm">
+
+    <div class="action-bar">
+        <div class="msg">
+            ✏️ Edit any cell → click <strong>Save & Import</strong>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <a href="{{ url_for('cancel_pdf_import', client_id=client[0]) }}"
+               class="btn btn-danger"
+               onclick="return confirm('Cancel this import? All data will be discarded.')">
+                ❌ Cancel
+            </a>
+            <button type="submit" class="btn btn-success">
+                💾 Save & Import All
+            </button>
+        </div>
+    </div>
+
+    <div class="table-card">
+        <div class="table-title">
+            📋 Edit Transactions
+            <span style="font-size:12px; opacity:0.8;">
+                (All fields editable)
+            </span>
+        </div>
+        <div class="scroll-table">
+            <table class="review-table" id="editTable">
+                <thead>
+                    <tr>
+                        <th style="width:34px;">#</th>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Company</th>
+                        <th>ISIN</th>
+                        <th>Qty</th>
+                        <th>Amount</th>
+                        <th>Buy Exp</th>
+                        <th>Sell Exp</th>
+                        <th class="stt-header">STT</th>
+                        <th>Notes</th>
+                        <th style="width:44px;">Del</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    {% for tx in transactions %}
+
+                    {% set risk = tx.risk_level if tx.risk_level is defined else 'low' %}
+                    {% set row_class = 'row-high-risk' if risk == 'high'
+                                       else ('row-medium-risk' if risk == 'medium' else '') %}
+
+                    <tr class="data-row {{ row_class }}">
+                        <td class="row-num">
+                            {{ loop.index }}
+                            {% if risk == 'high' %}
+                            <br><span class="risk-badge high">⚠️</span>
+                            {% elif risk == 'medium' %}
+                            <br><span class="risk-badge medium">ℹ️</span>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            <input type="date" name="date_{{ loop.index0 }}"
+                                   value="{{ tx.date }}"
+                                   class="edit-input date" required>
+                        </td>
+
+                        <td>
+                            <select name="type_{{ loop.index0 }}"
+                                    class="edit-select" required>
+                                <optgroup label="Normal">
+                                    <option value="BUY"     {% if tx.type == 'BUY' %}selected{% endif %}>BUY</option>
+                                    <option value="SELL"    {% if tx.type == 'SELL' %}selected{% endif %}>SELL</option>
+                                    <option value="BUYBACK" {% if tx.type == 'BUYBACK' %}selected{% endif %}>BUYBACK</option>
+                                    <option value="BONUS"   {% if tx.type == 'BONUS' %}selected{% endif %}>🎁 BONUS</option>
+                                </optgroup>
+                                <optgroup label="Corporate Action">
+                                    <option value="SPLIT"   {% if tx.type == 'SPLIT' %}selected{% endif %}>✂️ SPLIT</option>
+                                </optgroup>
+                                <optgroup label="Transfer">
+                                    <option value="GIFT"    {% if tx.type == 'GIFT' %}selected{% endif %}>🎁 GIFT</option>
+                                    <option value="INHERIT" {% if tx.type == 'INHERIT' %}selected{% endif %}>🏛️ INHERIT</option>
+                                </optgroup>
+                            </select>
+                        </td>
+
+                        <td class="company-cell">
+                            <input type="text"
+                                   name="company_{{ loop.index0 }}"
+                                   value="{{ tx.company }}"
+                                   class="edit-input text company-input"
+                                   data-row="{{ loop.index0 }}"
+                                   style="text-transform:uppercase;"
+                                   required>
+
+                            <!-- EXISTING: similar names from this client -->
+                            <div class="similar-warning"
+                                 id="warning_{{ loop.index0 }}"></div>
+
+                            <!-- NEW Day 16: Master DB suggestions -->
+                            <div class="master-db-box"
+                                 id="mdb_{{ loop.index0 }}"></div>
+
+                            {% if tx.warnings is defined and tx.warnings|length > 0 %}
+                            <div class="row-warnings {{ 'high' if risk == 'high' else '' }}">
+                                {% for w in tx.warnings %}
+                                    {{ w }}{% if not loop.last %}<br>{% endif %}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </td>
+
+                        <td>
+                            <input type="text" name="isin_{{ loop.index0 }}"
+                                   value="{{ tx.isin or '' }}"
+                                   class="edit-input text isin-input"
+                                   data-row="{{ loop.index0 }}"
+                                   placeholder="—">
+                        </td>
+
+                        <td>
+                            <input type="number" name="quantity_{{ loop.index0 }}"
+                                   value="{{ tx.quantity }}"
+                                   class="edit-input small num"
+                                   min="1" required>
+                        </td>
+
+                        <td>
+                            <input type="number" name="amount_{{ loop.index0 }}"
+                                   value="{{ tx.amount }}"
+                                   class="edit-input med num"
+                                   step="any" min="0" required>
+                        </td>
+
+                        <td>
+                            <input type="number" name="buy_expenses_{{ loop.index0 }}"
+                                   value="{{ tx.buy_expenses or 0 }}"
+                                   class="edit-input small num"
+                                   step="0.01" min="0">
+                        </td>
+
+                        <td>
+                            <input type="number" name="sell_expenses_{{ loop.index0 }}"
+                                   value="{{ tx.sell_expenses or 0 }}"
+                                   class="edit-input small num"
+                                   step="0.01" min="0">
+                        </td>
+
+                        <td class="stt-td">
+                            <input type="number" name="stt_{{ loop.index0 }}"
+                                   value="{{ tx.stt or 0 }}"
+                                   class="edit-input small num"
+                                   step="0.01" min="0"
+                                   placeholder="0">
+                        </td>
+
+                        <td>
+                            <input type="text" name="notes_{{ loop.index0 }}"
+                                   value="{{ tx.notes or '' }}"
+                                   class="edit-input text"
+                                   placeholder="—">
+                        </td>
+
+                        <td>
+                            <button type="button"
+                                    class="del-row-btn"
+                                    onclick="deleteRow(this)"
+                                    title="Remove this row">
+                                ✕
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <input type="hidden" name="total_rows" id="totalRows"
+           value="{{ transactions | length }}">
+
+    <div class="action-bar">
+        <div class="msg">
+            ✅ Save edits and import to FY <strong>{{ fin_year }}</strong>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <a href="{{ url_for('cancel_pdf_import', client_id=client[0]) }}"
+               class="btn btn-danger">
+                ❌ Cancel
+            </a>
+            <button type="submit" class="btn btn-success">
+                💾 Save & Import All
+            </button>
+        </div>
+    </div>
+
+</form>
+
+{% endblock %}
+
+
+{% block extra_script %}
+<script>
+
+    function deleteRow(button) {
+        if (!confirm("Remove this row from import?")) return;
+
+        const row = button.closest("tr");
+        row.remove();
+
+        const rows = document.querySelectorAll("#tableBody .data-row");
+        rows.forEach((r, idx) => {
+            r.querySelector(".row-num").textContent = idx + 1;
+        });
+
+        document.getElementById("totalCount").textContent = rows.length;
+        document.getElementById("totalRows").value = rows.length;
+
+        if (rows.length === 0) {
+            alert("No transactions left. Cancelling import.");
+            window.location.href = "{{ url_for('cancel_pdf_import', client_id=client[0]) }}";
+        }
+    }
+
+    // ════════════════════════════════════════════════════
+    // SIMILAR-NAME DETECTION (existing — kept as-is)
+    // ════════════════════════════════════════════════════
+    const NOISE_WORDS = [
+        "LTD", "LIMITED", "LIMITD", "LMITED",
+        "COMPANY", "CO", "CORP", "CORPORATION", "INC",
+        "INDIA", "INDIAN", "OF INDIA",
+        "PVT", "PRIVATE", "GROUP",
+        "BANK", "FINANCE", "FINANCIAL", "SERVICES", "INDUSTRIES",
+        "TECHNOLOGIES", "TECHNOLOGY", "TECH",
+        "ENTERPRISES", "HOLDINGS", "VENTURES"
+    ];
+
+    function cleanName(name) {
+        let cleaned = name.toUpperCase().trim();
+        cleaned = cleaned.replace(/[.,&\-()]/g, " ");
+        let words = cleaned.split(/\s+/).filter(w => w.length > 0);
+        words = words.filter(w => !NOISE_WORDS.includes(w));
+        return words.join(" ").trim();
+    }
+
+    function levenshtein(a, b) {
+        if (a === b) return 0;
+        if (a.length === 0) return b.length;
+        if (b.length === 0) return a.length;
+        const matrix = [];
+        for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+        for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+        for (let i = 1; i <= b.length; i++) {
+            for (let j = 1; j <= a.length; j++) {
+                if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                    matrix[i][j] = matrix[i - 1][j - 1];
+                } else {
+                    matrix[i][j] = Math.min(
+                        matrix[i - 1][j - 1] + 1,
+                        matrix[i][j - 1] + 1,
+                        matrix[i - 1][j] + 1
+                    );
+                }
+            }
+        }
+        return matrix[b.length][a.length];
+    }
+
+    function areSimilar(a, b) {
+        if (a === b) return false;
+        const cleanA = cleanName(a);
+        const cleanB = cleanName(b);
+        if (!cleanA || !cleanB) return false;
+        if (cleanA === cleanB) return true;
+        if (cleanA.length < 4 || cleanB.length < 4) return false;
+        const lenDiff = Math.abs(cleanA.length - cleanB.length);
+        if (lenDiff >= 3) {
+            if (cleanA.includes(cleanB) || cleanB.includes(cleanA)) {
+                return true;
+            }
+        }
+        const distance   = levenshtein(cleanA, cleanB);
+        const maxLen     = Math.max(cleanA.length, cleanB.length);
+        const similarity = 1 - (distance / maxLen);
+        return similarity >= 0.85;
+    }
+
+    const clientId       = {{ client[0] }};
+    let   savedCompanies = [];
+
+    fetch(`/get_companies/${clientId}`)
+        .then(r => r.json())
+        .then(data => {
+            savedCompanies = data;
+            document.querySelectorAll(".company-input").forEach(input => {
+                checkSimilarName(input);
+            });
+        })
+        .catch(err => console.error("Could not load companies:", err));
+
+    function checkSimilarName(input) {
+        const typedName = input.value.toUpperCase().trim();
+        const rowIdx    = input.dataset.row;
+        const warning   = document.getElementById(`warning_${rowIdx}`);
+
+        if (!warning) return;
+
+        if (!typedName || typedName.length < 3) {
+            warning.style.display = "none";
+            return;
+        }
+
+        const dbSimilar = savedCompanies.filter(c =>
+            c.name !== typedName && areSimilar(typedName, c.name)
+        );
+
+        const allInputs = document.querySelectorAll(".company-input");
+        const otherRowNames = [];
+        allInputs.forEach(inp => {
+            if (inp !== input) {
+                const otherName = inp.value.toUpperCase().trim();
+                if (otherName && otherName !== typedName
+                    && areSimilar(typedName, otherName)) {
+                    if (!otherRowNames.includes(otherName)) {
+                        otherRowNames.push(otherName);
+                    }
+                }
+            }
+        });
+
+        const messages = [];
+
+        if (dbSimilar.length > 0) {
+            const names = dbSimilar.slice(0, 3).map(c =>
+                `<strong onclick="useNameAtRow('${c.name}', '${c.isin || ''}', ${rowIdx})">${c.name}</strong>${c.isin ? ` (${c.isin})` : ""}`
+            ).join(", ");
+            messages.push(`⚠️ Similar exists: ${names}`);
+        }
+
+        if (otherRowNames.length > 0) {
+            const names = otherRowNames.slice(0, 3).map(n =>
+                `<strong onclick="useNameAtRow('${n}', '', ${rowIdx})">${n}</strong>`
+            ).join(", ");
+            messages.push(`⚠️ Similar in another row: ${names}`);
+        }
+
+        if (messages.length === 0) {
+            warning.style.display = "none";
+            return;
+        }
+
+        warning.innerHTML = messages.join("<br>");
+        warning.style.display = "block";
+    }
+
+    function useNameAtRow(name, isin, rowIdx) {
+        const companyInput = document.querySelector(
+            `input[name="company_${rowIdx}"]`
+        );
+        const isinInput = document.querySelector(
+            `input[name="isin_${rowIdx}"]`
+        );
+
+        if (companyInput) companyInput.value = name;
+        if (isinInput && isin && !isinInput.value) {
+            isinInput.value = isin;
+        }
+
+        document.querySelectorAll(".company-input").forEach(input => {
+            checkSimilarName(input);
+        });
+
+        // Re-check master DB too
+        if (companyInput) checkMasterDB(companyInput);
+    }
+
+    // ════════════════════════════════════════════════════
+    // NEW DAY 16: MASTER DB SUGGESTIONS
+    // ════════════════════════════════════════════════════
+
+    function checkMasterDB(input) {
+        const typedName = input.value.toUpperCase().trim();
+        const rowIdx    = input.dataset.row;
+        const mdbBox    = document.getElementById(`mdb_${rowIdx}`);
+
+        if (!mdbBox) return;
+
+        const isinInput = document.querySelector(`input[name="isin_${rowIdx}"]`);
+        const isinVal   = isinInput ? isinInput.value.trim().toUpperCase() : "";
+
+        if (!typedName && !isinVal) {
+            mdbBox.style.display = "none";
+            mdbBox.innerHTML = "";
+            return;
+        }
+
+        const params = new URLSearchParams();
+        if (typedName) params.append("name", typedName);
+        if (isinVal)   params.append("isin", isinVal);
+
+        fetch(`/api/master_match?${params.toString()}`)
+            .then(r => r.json())
+            .then(data => {
+                const matches = data.matches || [];
+
+                if (matches.length === 0) {
+                    mdbBox.style.display = "none";
+                    mdbBox.innerHTML = "";
+                    return;
+                }
+
+                let html = `<div class="mdb-title">📚 Master DB Match${matches.length > 1 ? 'es' : ''} (${matches.length} found)</div>`;
+
+                if (matches.length === 1) {
+                    // Single match → checkbox
+                    const m = matches[0];
+                    html += renderMatchOption(m, rowIdx, "checkbox", false);
+                } else {
+                    // Multiple matches → radio buttons (or none)
+                    html += `<label><input type="radio" name="mdb_choice_${rowIdx}" value="" checked> <span style="color:#666;">Don't use any</span></label>`;
+                    matches.forEach((m, i) => {
+                        html += renderMatchOption(m, rowIdx, "radio", false);
+                    });
+                }
+
+                mdbBox.innerHTML = html;
+                mdbBox.style.display = "block";
+            })
+            .catch(err => {
+                console.error("Master DB lookup failed:", err);
+                mdbBox.style.display = "none";
+            });
+    }
+
+    function renderMatchOption(m, rowIdx, inputType, checked) {
+        const matchClass = m.match_type === 'isin_exact'   ? 'isin'
+                         : m.match_type === 'alias_exact'  ? 'alias'
+                         : 'contains';
+        const matchLabel = m.match_type === 'isin_exact'   ? 'ISIN'
+                         : m.match_type === 'alias_exact'  ? 'ALIAS'
+                         : 'NAME';
+
+        const value = `${m.isin}|||${m.official_name}`;
+
+        if (inputType === "checkbox") {
+            return `
+                <label>
+                    <input type="checkbox" name="mdb_apply_${rowIdx}" value="${value}" ${checked ? 'checked' : ''}>
+                    <span>
+                        <span class="official-name">${m.official_name}</span>
+                        <span class="match-type ${matchClass}">${matchLabel}</span>
+                        <span class="isin-tag">${m.isin}${m.exchange ? ' · ' + m.exchange : ''}</span>
+                    </span>
+                </label>
+            `;
+        } else {
+            return `
+                <label>
+                    <input type="radio" name="mdb_choice_${rowIdx}" value="${value}">
+                    <span>
+                        <span class="official-name">${m.official_name}</span>
+                        <span class="match-type ${matchClass}">${matchLabel}</span>
+                        <span class="isin-tag">${m.isin}${m.exchange ? ' · ' + m.exchange : ''}</span>
+                    </span>
+                </label>
+            `;
+        }
+    }
+
+    document.addEventListener("input", function(e) {
+        if (e.target.classList.contains("company-input")) {
+            checkSimilarName(e.target);
+            document.querySelectorAll(".company-input").forEach(input => {
+                if (input !== e.target) checkSimilarName(input);
+            });
+            checkMasterDB(e.target);
+        }
+        if (e.target.classList.contains("isin-input")) {
+            // When ISIN changes, also check master DB
+            const rowIdx = e.target.dataset.row;
+            const companyInput = document.querySelector(`input[name="company_${rowIdx}"]`);
+            if (companyInput) checkMasterDB(companyInput);
+        }
+    });
+
+    // Run master DB check on all company inputs on page load
+    window.addEventListener("load", function() {
+        document.querySelectorAll(".company-input").forEach(input => {
+            checkMasterDB(input);
+        });
+    });
+
+</script>
+{% endblock %}

@@ -1,0 +1,818 @@
+{% extends "base.html" %}
+{% set active_page = "result" %}
+
+{% block title %}Capital Gains Report — {{ client[1] }}{% endblock %}
+
+{% block extra_style %}
+    /* ── Summary Cards ── */
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 14px;
+        margin-bottom: 24px;
+    }
+
+    .summary-card {
+        background: white;
+        border-radius: 10px;
+        padding: 16px 18px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.07);
+        border-top: 4px solid #ddd;
+    }
+
+    .summary-card.green  { border-top-color: #4caf50; }
+    .summary-card.red    { border-top-color: #f44336; }
+    .summary-card.blue   { border-top-color: #1a237e; }
+    .summary-card.orange { border-top-color: #ff9800; }
+    .summary-card.purple { border-top-color: #6a1b9a; }
+
+    .summary-card .s-label {
+        font-size: 11px; text-transform: uppercase;
+        letter-spacing: 0.4px; color: #888; margin-bottom: 6px;
+    }
+
+    .summary-card .s-value {
+        font-size: 20px; font-weight: 700; color: #222;
+    }
+
+    .summary-card .s-value.positive { color: #2e7d32; }
+    .summary-card .s-value.negative { color: #c62828; }
+    .summary-card .s-value.stt      { color: #e65100; }
+
+    .summary-card .s-note {
+        font-size: 10px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .section-title {
+        font-size: 15px; font-weight: 700; color: #1a237e;
+        margin-bottom: 14px; padding-bottom: 8px;
+        border-bottom: 2px solid #e8eaf6;
+    }
+
+    .tax-box {
+        background: white; border-radius: 10px;
+        padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+        margin-bottom: 24px;
+    }
+
+    .tax-row {
+        display: flex; justify-content: space-between;
+        align-items: center; padding: 10px 0;
+        border-bottom: 1px solid #f5f5f5; font-size: 14px;
+    }
+
+    .tax-row:last-child { border-bottom: none; }
+    .tax-row .t-label { color: #555; }
+    .tax-row .t-amount { font-weight: 600; }
+
+    .tax-row.highlight {
+        background: #e8eaf6; margin: 8px -24px;
+        padding: 12px 24px; border-bottom: none;
+    }
+
+    .tax-row.bf-row {
+        background: #ffebee; margin: 8px -24px;
+        padding: 12px 24px; border-bottom: none;
+        color: #c62828;
+    }
+
+    .tax-row.total {
+        background: #1a237e; color: white;
+        margin: 8px -24px -24px; padding: 16px 24px;
+        border-radius: 0 0 10px 10px; border-bottom: none;
+    }
+
+    .tax-row.total .t-label,
+    .tax-row.total .t-amount { color: white; font-size: 16px; }
+
+    .detail-card {
+        background: white; border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+        overflow: hidden; margin-bottom: 24px;
+    }
+
+    .detail-card .d-title {
+        background: #1a237e; color: white;
+        padding: 14px 20px; font-size: 14px; font-weight: 600;
+    }
+
+    .scroll-table { overflow-x: auto; }
+
+    .profit { color: #2e7d32; font-weight: 600; }
+    .loss   { color: #c62828; font-weight: 600; }
+
+    .gf-badge {
+        display: inline-block; background: #e3f2fd;
+        color: #0d47a1; font-size: 10px; padding: 2px 7px;
+        border-radius: 10px; margin-left: 4px;
+    }
+
+    .stt-col-header {
+        background: #fff8e1 !important;
+        color: #e65100 !important;
+    }
+
+    .stt-cell {
+        background: #fffde7;
+        color: #e65100;
+        font-weight: 600;
+        text-align: right;
+    }
+
+    .stt-info-box {
+        background: #fff8e1;
+        border-left: 4px solid #ffa000;
+        border-radius: 6px;
+        padding: 12px 18px;
+        margin-bottom: 24px;
+        font-size: 12px;
+        color: #5d4037;
+        line-height: 1.6;
+    }
+
+    .stt-info-box strong { color: #e65100; }
+
+    .errors-box {
+        background: #ffebee; border-left: 4px solid #f44336;
+        border-radius: 6px; padding: 14px 18px; margin-bottom: 20px;
+    }
+
+    .errors-box h4 { color: #c62828; margin-bottom: 6px; font-size: 14px; }
+    .errors-box ul { margin-left: 16px; font-size: 13px; color: #c62828; }
+
+    .carry-box {
+        background: #fff8e1; border: 1.5px solid #ffc107;
+        border-radius: 8px; padding: 16px 20px; margin-bottom: 24px;
+    }
+
+    .carry-box h4 { color: #e65100; margin-bottom: 10px; font-size: 14px; }
+
+    .carry-row {
+        display: flex; justify-content: space-between;
+        font-size: 13px; padding: 4px 0;
+    }
+
+    /* ── B/F Losses Banner — NEW ── */
+    .bf-banner {
+        background: linear-gradient(to right, #e8f5e9, #c8e6c9);
+        border: 2px solid #4caf50;
+        border-radius: 10px;
+        padding: 18px 22px;
+        margin-bottom: 24px;
+        box-shadow: 0 2px 8px rgba(76,175,80,0.15);
+    }
+
+    .bf-banner.applied {
+        background: linear-gradient(to right, #e3f2fd, #bbdefb);
+        border-color: #1976d2;
+    }
+
+    .bf-banner-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 10px;
+    }
+
+    .bf-banner-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #2e7d32;
+    }
+
+    .bf-banner.applied .bf-banner-title {
+        color: #1565c0;
+    }
+
+    .bf-summary {
+        font-size: 13px;
+        color: #555;
+        margin-bottom: 12px;
+    }
+
+    .bf-tag {
+        display: inline-block;
+        background: white;
+        color: #c62828;
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-weight: 600;
+        margin-right: 6px;
+        font-size: 12px;
+        border: 1px solid #ffcdd2;
+    }
+
+    /* ── B/F Application Log Table — NEW ── */
+    .bf-log-table {
+        width: 100%;
+        font-size: 12px;
+        background: white;
+        border-radius: 6px;
+        overflow: hidden;
+        margin-top: 8px;
+    }
+
+    .bf-log-table th {
+        background: #1976d2;
+        color: white;
+        padding: 8px 12px;
+        text-align: left;
+        font-size: 11px;
+    }
+
+    .bf-log-table td {
+        padding: 8px 12px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    /* ── Closing Stock Tabs ── */
+    .cs-tabs {
+        display: flex; gap: 0;
+        border-bottom: 2px solid #e8eaf6;
+    }
+
+    .cs-tab {
+        padding: 10px 20px; font-size: 13px; font-weight: 600;
+        color: #888; cursor: pointer; background: none;
+        border: none; border-bottom: 3px solid transparent;
+        margin-bottom: -2px; transition: all 0.2s;
+    }
+
+    .cs-tab.active {
+        color: #1a237e; border-bottom-color: #1a237e;
+    }
+
+    .cs-tab:hover { color: #1a237e; }
+
+    .cs-panel { display: none; }
+    .cs-panel.active { display: block; }
+
+    .cs-summary-row {
+        display: flex; gap: 12px; flex-wrap: wrap;
+        padding: 16px 20px; background: #f9fafb;
+        border-bottom: 1px solid #eee;
+    }
+
+    .cs-mini-card {
+        background: white; border-radius: 8px;
+        padding: 10px 14px; border-left: 4px solid #009688;
+        min-width: 140px; box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+
+    .cs-mini-card .cs-mini-label {
+        font-size: 10px; text-transform: uppercase;
+        color: #888; letter-spacing: 0.3px; margin-bottom: 3px;
+    }
+
+    .cs-mini-card .cs-mini-value {
+        font-size: 15px; font-weight: 700; color: #222;
+    }
+
+    .cs-mini-card.ltcg { border-left-color: #4caf50; }
+    .cs-mini-card.stcg { border-left-color: #ff9800; }
+
+    .cs-empty {
+        padding: 40px; text-align: center; color: #aaa; font-size: 14px;
+    }
+
+    .bonus-note {
+        font-size: 10px; color: #6a1b9a; background: #f3e5f5;
+        padding: 2px 6px; border-radius: 4px; display: inline-block;
+    }
+
+    .pre2018 {
+        font-size: 10px; color: #0d47a1; background: #e3f2fd;
+        padding: 2px 6px; border-radius: 4px;
+    }
+
+    .badge-buy     { background: #e3f2fd; color: #0d47a1; }
+    .badge-bonus   { background: #f3e5f5; color: #6a1b9a; }
+    .badge-gift    { background: #fce4ec; color: #880e4f; }
+    .badge-inherit { background: #e8eaf6; color: #283593; }
+{% endblock %}
+
+{% block content %}
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="breadcrumb">
+        <a href="{{ url_for('dashboard') }}">Dashboard</a> ›
+        <a href="{{ url_for('client_page', client_id=client[0], fin_year=fin_year) }}">
+            {{ client[1] }}
+        </a> › Capital Gains Report
+    </div>
+    <div class="page-header-row">
+        <div>
+            <h1>⚖️ Capital Gains Report</h1>
+            <div class="text-muted mt-4">
+                PAN: {{ client[2] }} · FY {{ fin_year }} ·
+                {{ rows | length }} transactions analysed ·
+                Rules effective 1 Apr 2026
+            </div>
+        </div>
+        <div class="btn-row" style="margin-bottom:0;">
+            <button onclick="window.print()" class="btn btn-outline">
+            🖨️ Print / PDF
+    </button>
+    <a href="{{ url_for('closing_stock_page', client_id=client[0], fin_year=fin_year) }}"
+       class="btn btn-teal">
+        📦 Closing Stock
+    </a>
+    <a href="{{ url_for('itr_schedule_cg', client_id=client[0], fin_year=fin_year) }}"
+       class="btn btn-primary">
+        📋 ITR Schedule CG
+    </a>
+</div>
+    </div>
+</div>
+
+<!-- Errors -->
+{% if errors %}
+<div class="errors-box">
+    <h4>⚠️ Errors Found</h4>
+    <ul>
+        {% for err in errors %}<li>{{ err }}</li>{% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- B/F LOSSES BANNER — NEW (Day 11)                     -->
+<!-- ══════════════════════════════════════════════════════ -->
+{% if available_losses %}
+
+    {% if apply_bf %}
+        <!-- B/F was APPLIED — show summary -->
+        <div class="bf-banner applied">
+            <div class="bf-banner-header">
+                <div class="bf-banner-title">
+                    ✅ Brought Forward Losses Applied
+                </div>
+                <a href="{{ url_for('calculate', client_id=client[0], fin_year=fin_year) }}"
+                   class="btn btn-outline btn-sm">
+                    🔄 Recalculate Without B/F
+                </a>
+            </div>
+
+            <div class="bf-summary">
+                Applied <strong>₹{{ "{:,.2f}".format(tax.bf_stcg_applied) }}</strong>
+                to STCG and
+                <strong>₹{{ "{:,.2f}".format(tax.bf_ltcg_applied) }}</strong>
+                to LTCG from prior year losses.
+            </div>
+
+            {% if tax.bf_application_log %}
+            <table class="bf-log-table">
+                <thead>
+                    <tr>
+                        <th>Loss Year</th>
+                        <th>Loss Type</th>
+                        <th>Applied To</th>
+                        <th style="text-align:right;">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in tax.bf_application_log %}
+                    <tr>
+                        <td><strong>FY {{ entry.loss_year }}</strong></td>
+                        <td>{{ entry.loss_type }}</td>
+                        <td>{{ entry.applied_to }}</td>
+                        <td style="text-align:right; color:#c62828; font-weight:600;">
+                            ₹{{ "{:,.2f}".format(entry.amount) }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        </div>
+
+    {% else %}
+        <!-- B/F NOT applied — show option to apply -->
+        <div class="bf-banner">
+            <div class="bf-banner-header">
+                <div class="bf-banner-title">
+                    💰 Brought Forward Losses Available
+                </div>
+                <a href="{{ url_for('calculate', client_id=client[0], fin_year=fin_year) }}?apply_bf=yes"
+                   class="btn btn-success btn-sm">
+                    ✅ Apply B/F Losses & Recalculate
+                </a>
+            </div>
+
+            <div class="bf-summary">
+                Found <strong>{{ available_losses | length }}</strong>
+                prior year loss record{{ 's' if available_losses|length != 1 else '' }}.
+                Click above to auto-apply them (FIFO order):
+            </div>
+
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                {% for loss in available_losses %}
+                    <span class="bf-tag">
+                        FY {{ loss.loss_year }}:
+                        {% if loss.stcl_remaining > 0 %}
+                            STCL ₹{{ "{:,.0f}".format(loss.stcl_remaining) }}
+                        {% endif %}
+                        {% if loss.stcl_remaining > 0 and loss.ltcl_remaining > 0 %} · {% endif %}
+                        {% if loss.ltcl_remaining > 0 %}
+                            LTCL ₹{{ "{:,.0f}".format(loss.ltcl_remaining) }}
+                        {% endif %}
+                        <span style="font-size:10px; color:#888;">
+                            ({{ loss.years_remaining }}y left)
+                        </span>
+                    </span>
+                {% endfor %}
+            </div>
+
+            <div style="font-size:11px; color:#666; margin-top:10px;">
+                ℹ️ Losses are applied in FIFO order (oldest first).
+                STCL is applied before LTCL within each year.
+            </div>
+        </div>
+    {% endif %}
+
+{% endif %}
+
+<!-- Summary Cards -->
+<div class="section-title">📊 Gains Summary</div>
+<div class="summary-grid">
+    <div class="summary-card green">
+        <div class="s-label">Gross LTCG</div>
+        <div class="s-value positive">₹{{ "{:,.2f}".format(tax.gross_ltcg) }}</div>
+    </div>
+    <div class="summary-card red">
+        <div class="s-label">Gross LTCL</div>
+        <div class="s-value negative">₹{{ "{:,.2f}".format(tax.gross_ltcl) }}</div>
+    </div>
+    <div class="summary-card green">
+        <div class="s-label">Gross STCG</div>
+        <div class="s-value positive">₹{{ "{:,.2f}".format(tax.gross_stcg) }}</div>
+    </div>
+    <div class="summary-card red">
+        <div class="s-label">Gross STCL</div>
+        <div class="s-value negative">₹{{ "{:,.2f}".format(tax.gross_stcl) }}</div>
+    </div>
+    <div class="summary-card blue">
+        <div class="s-label">Net LTCG (after set-off)</div>
+        <div class="s-value">₹{{ "{:,.2f}".format(tax.net_ltcg) }}</div>
+        {% if apply_bf and tax.bf_ltcg_applied > 0 %}
+        <div class="s-note" style="color:#1565c0;">
+            After B/F of ₹{{ "{:,.0f}".format(tax.bf_ltcg_applied) }}
+        </div>
+        {% endif %}
+    </div>
+    <div class="summary-card blue">
+        <div class="s-label">Net STCG (after set-off)</div>
+        <div class="s-value">₹{{ "{:,.2f}".format(tax.net_stcg) }}</div>
+        {% if apply_bf and tax.bf_stcg_applied > 0 %}
+        <div class="s-note" style="color:#1565c0;">
+            After B/F of ₹{{ "{:,.0f}".format(tax.bf_stcg_applied) }}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="summary-card orange">
+        <div class="s-label">Total STT Paid</div>
+        <div class="s-value stt">₹{{ "{:,.2f}".format(tax.total_stt_paid) }}</div>
+        <div class="s-note">Not deductible · Sec 40(a)(ib)</div>
+    </div>
+</div>
+
+<!-- Tax Computation -->
+<div class="section-title">🧾 Tax Computation</div>
+<div class="tax-box">
+
+    {% if apply_bf and tax.bf_ltcg_applied > 0 %}
+    <div class="tax-row bf-row">
+        <span class="t-label">📉 Brought Forward Loss applied to LTCG</span>
+        <span class="t-amount">
+            -₹{{ "{:,.2f}".format(tax.bf_ltcg_applied) }}
+        </span>
+    </div>
+    {% endif %}
+
+    <div class="tax-row">
+        <span class="t-label">Net LTCG (after current + B/F set-off)</span>
+        <span class="t-amount">₹{{ "{:,.2f}".format(tax.net_ltcg) }}</span>
+    </div>
+    <div class="tax-row">
+        <span class="t-label">Less: LTCG Exemption u/s 112A</span>
+        <span class="t-amount" style="color:#2e7d32;">
+            (₹{{ "{:,.2f}".format(tax.ltcg_exemption) }})
+        </span>
+    </div>
+    <div class="tax-row highlight">
+        <span class="t-label"><strong>Taxable LTCG</strong></span>
+        <span class="t-amount"><strong>₹{{ "{:,.2f}".format(tax.taxable_ltcg) }}</strong></span>
+    </div>
+    <div class="tax-row">
+        <span class="t-label">LTCG Tax @ 12.5%</span>
+        <span class="t-amount">₹{{ "{:,.2f}".format(tax.ltcg_tax) }}</span>
+    </div>
+
+    {% if apply_bf and tax.bf_stcg_applied > 0 %}
+    <div class="tax-row bf-row">
+        <span class="t-label">📉 Brought Forward Loss applied to STCG</span>
+        <span class="t-amount">
+            -₹{{ "{:,.2f}".format(tax.bf_stcg_applied) }}
+        </span>
+    </div>
+    {% endif %}
+
+    <div class="tax-row">
+        <span class="t-label">Taxable STCG (after current + B/F set-off)</span>
+        <span class="t-amount">₹{{ "{:,.2f}".format(tax.taxable_stcg) }}</span>
+    </div>
+    <div class="tax-row">
+        <span class="t-label">STCG Tax @ 20%</span>
+        <span class="t-amount">₹{{ "{:,.2f}".format(tax.stcg_tax) }}</span>
+    </div>
+    <div class="tax-row highlight">
+        <span class="t-label"><strong>Total Tax (before cess)</strong></span>
+        <span class="t-amount"><strong>₹{{ "{:,.2f}".format(tax.total_tax) }}</strong></span>
+    </div>
+    <div class="tax-row">
+        <span class="t-label">Health & Education Cess @ 4%</span>
+        <span class="t-amount">₹{{ "{:,.2f}".format(tax.cess) }}</span>
+    </div>
+    <div class="tax-row total">
+        <span class="t-label">TOTAL TAX LIABILITY</span>
+        <span class="t-amount">₹{{ "{:,.2f}".format(tax.grand_total) }}</span>
+    </div>
+</div>
+
+<!-- STT Info Box -->
+{% if tax.total_stt_paid > 0 %}
+<div class="stt-info-box">
+    <strong>ℹ️ Note on STT (Securities Transaction Tax):</strong>
+    Total STT of <strong>₹{{ "{:,.2f}".format(tax.total_stt_paid) }}</strong>
+    was paid on these transactions. Per <strong>Section 40(a)(ib)</strong>
+    of the Income Tax Act, STT is <strong>NOT deductible</strong> from
+    capital gains. It is shown above purely for client records and audit trail.
+    STT is reflected separately in the table below for transparency.
+</div>
+{% endif %}
+
+<!-- Carry Forward to NEXT year -->
+{% if tax.ltcl_carryforward > 0 or tax.stcl_carryforward > 0 %}
+<div class="carry-box">
+    <h4>⏩ New Losses to Carry Forward (up to 8 AYs)</h4>
+    {% if tax.ltcl_carryforward > 0 %}
+    <div class="carry-row">
+        <span>LTCL (set off only against LTCG)</span>
+        <strong>₹{{ "{:,.2f}".format(tax.ltcl_carryforward) }}</strong>
+    </div>
+    {% endif %}
+    {% if tax.stcl_carryforward > 0 %}
+    <div class="carry-row">
+        <span>STCL (set off against STCG and LTCG)</span>
+        <strong>₹{{ "{:,.2f}".format(tax.stcl_carryforward) }}</strong>
+    </div>
+    {% endif %}
+    <div style="font-size:11px; color:#888; margin-top:8px;">
+        ✅ These losses have been auto-saved.
+        Visible on the client page under "Brought Forward Losses".
+    </div>
+</div>
+{% endif %}
+
+<!-- Detailed Table -->
+<div class="section-title">📋 FIFO Matched Lots</div>
+<div class="detail-card">
+    <div class="d-title">Transaction-wise Capital Gains</div>
+    <div class="scroll-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Company</th>
+                    <th>Buy Date</th>
+                    <th>Sell Date</th>
+                    <th>Days</th>
+                    <th>Qty</th>
+                    <th>Buy Price</th>
+                    <th>Adj Cost (₹)</th>
+                    <th>Net Proceeds (₹)</th>
+                    <th class="stt-col-header">STT (₹)</th>
+                    <th>FMV</th>
+                    <th>Final Cost (₹)</th>
+                    <th>P/L (₹)</th>
+                    <th>Type</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td><strong>{{ row.company }}</strong></td>
+                    <td>{{ row.buy_date }}</td>
+                    <td>{{ row.sell_date }}</td>
+                    <td>{{ row.holding_days }}</td>
+                    <td>{{ row.shares }}</td>
+                    <td>₹{{ "%.2f" | format(row.buy_price_per_share) }}</td>
+                    <td>₹{{ "{:,.2f}".format(row.adjusted_cost) }}</td>
+                    <td>₹{{ "{:,.2f}".format(row.adjusted_proceeds) }}</td>
+
+                    <td class="stt-cell">
+                        {% if row.stt_paid and row.stt_paid > 0 %}
+                            ₹{{ "{:,.2f}".format(row.stt_paid) }}
+                        {% else %}
+                            <span style="color:#ccc; font-weight:400;">—</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if row.fmv_31_jan_2018 %}
+                            ₹{{ "%.2f" | format(row.fmv_31_jan_2018) }}
+                            {% if row.grandfathering %}
+                                <span class="gf-badge">GF</span>
+                            {% endif %}
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>₹{{ "{:,.2f}".format(row.final_cost_used) }}</td>
+                    <td class="{{ 'profit' if row.profit_loss >= 0 else 'loss' }}">
+                        {% if row.profit_loss >= 0 %}
+                            +₹{{ "{:,.2f}".format(row.profit_loss) }}
+                        {% else %}
+                            -₹{{ "{:,.2f}".format(row.profit_loss | abs) }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge {{ 'badge-ltcg' if row.gain_type == 'LTCG' else 'badge-stcg' }}">
+                            {{ row.gain_type }}
+                        </span>
+                    </td>
+                    <td style="font-size:11px; color:#888; max-width:180px;">
+                        {{ row.notes if row.notes else "—" }}
+                    </td>
+                </tr>
+                {% endfor %}
+
+                {% if tax.total_stt_paid > 0 %}
+                <tr style="background:#fff8e1; font-weight:700;">
+                    <td colspan="8" style="text-align:right; color:#5d4037;">
+                        Total STT Paid (informational only)
+                    </td>
+                    <td class="stt-cell" style="background:#fff3c4;">
+                        ₹{{ "{:,.2f}".format(tax.total_stt_paid) }}
+                    </td>
+                    <td colspan="5" style="color:#888; font-size:11px;">
+                        Not deductible (Sec 40(a)(ib))
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     CLOSING STOCK SECTION
+════════════════════════════════════════════════ -->
+<div class="section-title">📦 Closing Stock / Unsold Holdings</div>
+<div class="detail-card">
+    <div class="d-title">
+        Unsold Share Holdings
+        <span style="font-size:12px; font-weight:400; margin-left:10px; opacity:0.8;">
+            Based on all transactions entered
+        </span>
+    </div>
+
+    <div class="cs-tabs">
+        <button class="cs-tab active" onclick="showCSTab('year_end', this)">
+            📅 As on 31-Mar-{{ fin_year.split('-')[1] }}
+        </button>
+        <button class="cs-tab" onclick="showCSTab('today', this)">
+            📆 Today ({{ today_str.split('-')[2] }}-{{ today_str.split('-')[1] }}-{{ today_str.split('-')[0] }})
+        </button>
+    </div>
+
+    <!-- Year End Panel -->
+    <div id="cs-panel-year_end" class="cs-panel active">
+        {% if closing_year_end %}
+        <div class="cs-summary-row">
+            <div class="cs-mini-card"><div class="cs-mini-label">Companies</div><div class="cs-mini-value">{{ summary_year_end.total_companies }}</div></div>
+            <div class="cs-mini-card"><div class="cs-mini-label">Total Shares</div><div class="cs-mini-value">{{ "{:,}".format(summary_year_end.total_shares) }}</div></div>
+            <div class="cs-mini-card"><div class="cs-mini-label">Total Cost</div><div class="cs-mini-value">₹{{ "{:,.0f}".format(summary_year_end.total_cost) }}</div></div>
+            <div class="cs-mini-card ltcg"><div class="cs-mini-label">LTCG Shares</div><div class="cs-mini-value">{{ "{:,}".format(summary_year_end.ltcg_shares) }}</div></div>
+            <div class="cs-mini-card stcg"><div class="cs-mini-label">STCG Shares</div><div class="cs-mini-value">{{ "{:,}".format(summary_year_end.stcg_shares) }}</div></div>
+        </div>
+        <div class="scroll-table">
+            <table>
+                <thead><tr>
+                    <th>Company</th><th>ISIN</th><th>Type</th><th>Buy Date</th>
+                    <th>Qty</th><th>Cost/Share</th><th>Total Cost</th>
+                    <th>GF Cost</th><th>Holding</th><th>Status</th><th>Notes</th>
+                </tr></thead>
+                <tbody>
+                {% set ns = namespace(prev='') %}
+                {% for lot in closing_year_end %}
+                <tr>
+                    <td>
+                        {% if lot.company != ns.prev %}
+                            <strong>{{ lot.company }}</strong>
+                            {% if lot.company_bonus_qty > 0 %}<br><span class="bonus-note">🎁 {{ lot.company_bonus_qty }} bonus</span>{% endif %}
+                            {% set ns.prev = lot.company %}
+                        {% else %}<span style="color:#ccc;">↳</span>{% endif %}
+                    </td>
+                    <td style="font-size:11px;color:#888;">{{ lot.isin or '—' }}</td>
+                    <td>
+                        {% if lot.label == 'BONUS' %}<span class="badge badge-bonus">🎁 BONUS</span>
+                        {% elif lot.label == 'GIFT' %}<span class="badge badge-gift">🎁 GIFT</span>
+                        {% elif lot.label == 'INHERIT' %}<span class="badge badge-inherit">🏛️ INHERIT</span>
+                        {% else %}<span class="badge badge-buy">BUY</span>{% endif %}
+                    </td>
+                    <td>{{ lot.buy_date }}{% if lot.is_pre_2018 %}<br><span class="pre2018">Pre-2018</span>{% endif %}</td>
+                    <td><strong>{{ "{:,}".format(lot.quantity) }}</strong></td>
+                    <td>{% if lot.is_bonus %}<span style="color:#888;">₹0</span>{% else %}₹{{ "{:,.4f}".format(lot.cost_per_share) }}{% endif %}</td>
+                    <td>₹{{ "{:,.2f}".format(lot.total_cost) }}</td>
+                    <td>{% if lot.grandfathered_cost_per_share %}₹{{ "{:,.2f}".format(lot.grandfathered_cost_per_share) }} <span class="gf-badge">GF</span>{% elif lot.is_pre_2018 and not lot.is_bonus %}<span style="color:#e65100;font-size:11px;">FMV needed</span>{% else %}<span style="color:#ccc;">—</span>{% endif %}</td>
+                    <td>{{ lot.holding_days }}d ({{ lot.holding_years }}y)</td>
+                    <td><span class="badge {{ 'badge-ltcg' if lot.status == 'LTCG' else 'badge-stcg' }}">{{ '✅ LTCG' if lot.status == 'LTCG' else '⚠️ STCG' }}</span></td>
+                    <td style="font-size:11px;color:#888;max-width:160px;">{{ lot.notes or '—' }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="cs-empty">✅ No unsold holdings as on 31-Mar-{{ fin_year.split('-')[1] }}.</div>
+        {% endif %}
+    </div>
+
+    <!-- Today Panel -->
+    <div id="cs-panel-today" class="cs-panel">
+        {% if closing_today %}
+        <div class="cs-summary-row">
+            <div class="cs-mini-card"><div class="cs-mini-label">Companies</div><div class="cs-mini-value">{{ summary_today.total_companies }}</div></div>
+            <div class="cs-mini-card"><div class="cs-mini-label">Total Shares</div><div class="cs-mini-value">{{ "{:,}".format(summary_today.total_shares) }}</div></div>
+            <div class="cs-mini-card"><div class="cs-mini-label">Total Cost</div><div class="cs-mini-value">₹{{ "{:,.0f}".format(summary_today.total_cost) }}</div></div>
+            <div class="cs-mini-card ltcg"><div class="cs-mini-label">LTCG Shares</div><div class="cs-mini-value">{{ "{:,}".format(summary_today.ltcg_shares) }}</div></div>
+            <div class="cs-mini-card stcg"><div class="cs-mini-label">STCG Shares</div><div class="cs-mini-value">{{ "{:,}".format(summary_today.stcg_shares) }}</div></div>
+        </div>
+        <div class="scroll-table">
+            <table>
+                <thead><tr>
+                    <th>Company</th><th>ISIN</th><th>Type</th><th>Buy Date</th>
+                    <th>Qty</th><th>Cost/Share</th><th>Total Cost</th>
+                    <th>GF Cost</th><th>Holding</th><th>Status</th><th>Notes</th>
+                </tr></thead>
+                <tbody>
+                {% set ns2 = namespace(prev='') %}
+                {% for lot in closing_today %}
+                <tr>
+                    <td>
+                        {% if lot.company != ns2.prev %}
+                            <strong>{{ lot.company }}</strong>
+                            {% if lot.company_bonus_qty > 0 %}<br><span class="bonus-note">🎁 {{ lot.company_bonus_qty }} bonus</span>{% endif %}
+                            {% set ns2.prev = lot.company %}
+                        {% else %}<span style="color:#ccc;">↳</span>{% endif %}
+                    </td>
+                    <td style="font-size:11px;color:#888;">{{ lot.isin or '—' }}</td>
+                    <td>
+                        {% if lot.label == 'BONUS' %}<span class="badge badge-bonus">🎁 BONUS</span>
+                        {% elif lot.label == 'GIFT' %}<span class="badge badge-gift">🎁 GIFT</span>
+                        {% elif lot.label == 'INHERIT' %}<span class="badge badge-inherit">🏛️ INHERIT</span>
+                        {% else %}<span class="badge badge-buy">BUY</span>{% endif %}
+                    </td>
+                    <td>{{ lot.buy_date }}{% if lot.is_pre_2018 %}<br><span class="pre2018">Pre-2018</span>{% endif %}</td>
+                    <td><strong>{{ "{:,}".format(lot.quantity) }}</strong></td>
+                    <td>{% if lot.is_bonus %}<span style="color:#888;">₹0</span>{% else %}₹{{ "{:,.4f}".format(lot.cost_per_share) }}{% endif %}</td>
+                    <td>₹{{ "{:,.2f}".format(lot.total_cost) }}</td>
+                    <td>{% if lot.grandfathered_cost_per_share %}₹{{ "{:,.2f}".format(lot.grandfathered_cost_per_share) }} <span class="gf-badge">GF</span>{% elif lot.is_pre_2018 and not lot.is_bonus %}<span style="color:#e65100;font-size:11px;">FMV needed</span>{% else %}<span style="color:#ccc;">—</span>{% endif %}</td>
+                    <td>{{ lot.holding_days }}d ({{ lot.holding_years }}y)</td>
+                    <td><span class="badge {{ 'badge-ltcg' if lot.status == 'LTCG' else 'badge-stcg' }}">{{ '✅ LTCG' if lot.status == 'LTCG' else '⚠️ STCG' }}</span></td>
+                    <td style="font-size:11px;color:#888;max-width:160px;">{{ lot.notes or '—' }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="cs-empty">✅ No current holdings as on today.</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Footer -->
+<div class="text-muted" style="text-align:center; padding-bottom:24px;">
+    Capital Gains AI Tool — LTCG @ 12.5% | STCG @ 20% | Cess @ 4% |
+    Sec 112A Exemption ₹1,25,000 | FIFO Method | Effective 1-Apr-2026<br>
+    STT shown for record only — NOT deductible (Sec 40(a)(ib))
+</div>
+
+{% endblock %}
+
+{% block extra_script %}
+<script>
+function showCSTab(tabName, clickedBtn) {
+    document.querySelectorAll('.cs-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.cs-tab').forEach(b => b.classList.remove('active'));
+    document.getElementById('cs-panel-' + tabName).classList.add('active');
+    clickedBtn.classList.add('active');
+}
+</script>
+{% endblock %}

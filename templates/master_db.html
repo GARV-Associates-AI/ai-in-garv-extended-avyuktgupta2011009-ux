@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+{% block title %}Master Securities DB{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <div class="breadcrumb">
+        <a href="{{ url_for('dashboard') }}">Dashboard</a> &raquo; Master DB
+    </div>
+    <div class="page-header-row">
+        <h1>📚 Master Securities Database</h1>
+        <div class="btn-row" style="margin-bottom:0;">
+            <button onclick="document.getElementById('uploadModal').style.display='flex'" class="btn btn-primary">
+                📤 Upload NSE/BSE CSV
+            </button>
+            <button onclick="document.getElementById('addModal').style.display='flex'" class="btn btn-success">
+                ➕ Add Manually
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- STATS -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-value">{{ total_count }}</div>
+        <div class="stat-label">Total Securities</div>
+    </div>
+</div>
+
+<!-- SEARCH -->
+<div class="card">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('master_db.master_db_page') }}">
+            <div class="flex gap-8 align-center">
+                <input
+                    type="text" name="search" value="{{ search }}"
+                    placeholder="🔍 Search by ISIN, name, or alias..."
+                    class="form-control" style="flex:1;">
+                <button type="submit" class="btn btn-primary">Search</button>
+                {% if search %}
+                <a href="{{ url_for('master_db.master_db_page') }}" class="btn btn-outline">Clear</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- TABLE -->
+<div class="card">
+    <div class="card-header plain">
+        Securities {% if search %}matching "{{ search }}"{% endif %}
+        <span class="text-muted">Page {{ page }} of {{ total_pages or 1 }}</span>
+    </div>
+    <div class="card-body">
+
+        {% if not securities %}
+        <div class="empty-state">
+            <div class="empty-icon">📚</div>
+            <h3>No securities found</h3>
+            <p>
+                {% if search %}
+                Try a different search term.
+                {% else %}
+                Upload an NSE or BSE CSV file to get started.
+                {% endif %}
+            </p>
+        </div>
+        {% else %}
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ISIN</th>
+                        <th>Official Name</th>
+                        <th>Aliases</th>
+                        <th>Exchange</th>
+                        <th style="text-align:right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for sec in securities %}
+                <tr>
+                    <td style="font-family:monospace;font-size:12px;">{{ sec.isin }}</td>
+                    <td><strong>{{ sec.official_name }}</strong></td>
+                    <td>
+                        {% if sec.aliases %}
+                            {% for a in sec.aliases %}
+                                <span class="badge badge-bonus">{{ a }}</span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if sec.exchange %}
+                            <span class="badge badge-buy">{{ sec.exchange }}</span>
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align:right;">
+                        <button class="btn btn-sm btn-outline"
+                                onclick="openEditModal('{{ sec.isin }}', '{{ sec.official_name|e }}', '{{ sec.aliases|join(', ')|e }}', '{{ sec.exchange or '' }}')">
+                            ✏️ Edit
+                        </button>
+                        <form method="POST" action="{{ url_for('master_db.delete_security_route', isin=sec.isin) }}"
+                              style="display:inline;"
+                              onsubmit="return confirm('Delete this security?');">
+                            <button type="submit" class="btn btn-sm btn-danger">🗑️</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- PAGINATION -->
+        {% if total_pages > 1 %}
+        <div class="flex gap-8 align-center mt-16" style="justify-content:center;">
+            {% if page > 1 %}
+                <a href="?search={{ search }}&page={{ page - 1 }}" class="btn btn-sm btn-outline">← Previous</a>
+            {% endif %}
+            <span class="text-muted">Page {{ page }} of {{ total_pages }}</span>
+            {% if page < total_pages %}
+                <a href="?search={{ search }}&page={{ page + 1 }}" class="btn btn-sm btn-outline">Next →</a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% endif %}
+
+    </div>
+</div>
+
+<!-- ════════ UPLOAD MODAL ════════ -->
+<div id="uploadModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:white;border-radius:10px;padding:24px;width:90%;max-width:500px;">
+        <h2 style="margin-bottom:16px;">📤 Upload NSE / BSE File</h2>
+        <form method="POST" action="{{ url_for('master_db.upload_csv') }}" enctype="multipart/form-data">
+            <div class="form-group">
+                <label class="form-label">Select file (CSV or Excel)</label>
+                <input type="file" name="csv_file" accept=".csv,.xlsx,.xls" required class="form-control">
+            </div>
+            <p class="text-muted" style="margin-bottom:16px;">
+                Auto-detects NSE or BSE format.<br>
+                Existing ISINs will be skipped (no duplicates).
+            </p>
+            <div class="flex gap-8" style="justify-content:flex-end;">
+                <button type="button" onclick="document.getElementById('uploadModal').style.display='none'" class="btn btn-outline">Cancel</button>
+                <button type="submit" class="btn btn-primary">Upload</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ════════ ADD MANUALLY MODAL ════════ -->
+<div id="addModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:white;border-radius:10px;padding:24px;width:90%;max-width:500px;">
+        <h2 style="margin-bottom:16px;">➕ Add Security Manually</h2>
+        <form method="POST" action="{{ url_for('master_db.manual_add') }}">
+            <div class="form-group">
+                <label class="form-label">ISIN (12 chars) *</label>
+                <input type="text" name="isin" required maxlength="12" class="form-control" placeholder="INE002A01018">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Official Name *</label>
+                <input type="text" name="official_name" required class="form-control" placeholder="RELIANCE INDUSTRIES LIMITED">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Aliases (comma-separated)</label>
+                <input type="text" name="aliases" class="form-control" placeholder="RIL, RELIANCE">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Exchange</label>
+                <input type="text" name="exchange" class="form-control" placeholder="NSE / BSE / BOTH">
+            </div>
+            <div class="flex gap-8" style="justify-content:flex-end;">
+                <button type="button" onclick="document.getElementById('addModal').style.display='none'" class="btn btn-outline">Cancel</button>
+                <button type="submit" class="btn btn-success">Add</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ════════ EDIT MODAL ════════ -->
+<div id="editModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:white;border-radius:10px;padding:24px;width:90%;max-width:500px;">
+        <h2 style="margin-bottom:16px;">✏️ Edit Security</h2>
+        <form id="editForm" method="POST" action="">
+            <div class="form-group">
+                <label class="form-label">ISIN (locked)</label>
+                <input type="text" id="editIsin" readonly class="form-control" style="background:#f5f5f5;">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Official Name *</label>
+                <input type="text" name="official_name" id="editName" required class="form-control">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Aliases (comma-separated)</label>
+                <input type="text" name="aliases" id="editAliases" class="form-control">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Exchange</label>
+                <input type="text" name="exchange" id="editExchange" class="form-control">
+            </div>
+            <div class="flex gap-8" style="justify-content:flex-end;">
+                <button type="button" onclick="document.getElementById('editModal').style.display='none'" class="btn btn-outline">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_script %}
+<script>
+function openEditModal(isin, name, aliases, exchange) {
+    document.getElementById('editIsin').value     = isin;
+    document.getElementById('editName').value     = name;
+    document.getElementById('editAliases').value  = aliases;
+    document.getElementById('editExchange').value = exchange;
+    document.getElementById('editForm').action    = "/master_db/edit/" + isin;
+    document.getElementById('editModal').style.display = 'flex';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,382 @@
+    {% extends "base.html" %}
+    {% set active_page = "closing_stock" %}
+
+    {% block title %}Closing Stock — {{ client[1] }}{% endblock %}
+
+    {% block extra_style %}
+        .date-selector-bar {
+            background: white; border-radius: 10px;
+            padding: 18px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+            margin-bottom: 20px; display: flex; align-items: center;
+            gap: 14px; flex-wrap: wrap;
+        }
+
+        .date-selector-bar select {
+            padding: 9px 14px; border: 1.5px solid #ddd;
+            border-radius: 6px; font-size: 13px; min-width: 260px;
+            cursor: pointer;
+        }
+
+        .custom-date-wrap {
+            display: none; align-items: center; gap: 10px;
+        }
+
+        .custom-date-wrap.visible { display: flex; }
+
+        .custom-date-wrap input[type="date"] {
+            padding: 9px 12px; border: 1.5px solid #ddd;
+            border-radius: 6px; font-size: 13px;
+        }
+
+        .btn-apply {
+            padding: 9px 18px; background: #009688; color: white;
+            border: none; border-radius: 6px; font-size: 13px;
+            font-weight: 600; cursor: pointer;
+        }
+
+        .btn-apply:hover { background: #00796b; }
+
+        .active-date-label {
+            font-size: 12px; color: #009688; font-weight: 600;
+            padding: 5px 12px; background: #e0f2f1;
+            border-radius: 16px; white-space: nowrap;
+        }
+
+        .cs-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+            gap: 14px; margin-bottom: 20px;
+        }
+
+        .cs-stat-card {
+            background: white; border-radius: 10px;
+            padding: 16px 18px; box-shadow: 0 2px 6px rgba(0,0,0,0.07);
+            border-left: 4px solid #009688;
+        }
+
+        .cs-stat-card.green  { border-left-color: #4caf50; }
+        .cs-stat-card.orange { border-left-color: #ff9800; }
+        .cs-stat-card.blue   { border-left-color: #1a237e; }
+        .cs-stat-card.purple { border-left-color: #9c27b0; }
+
+        .cs-stat-card .cs-stat-value {
+            font-size: 20px; font-weight: 700; color: #222;
+        }
+
+        .cs-stat-card .cs-stat-label {
+            font-size: 11px; color: #888; margin-top: 4px;
+        }
+
+        .detail-card {
+            background: white; border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+            overflow: hidden; margin-bottom: 24px;
+        }
+
+        .d-title {
+            background: #009688; color: white;
+            padding: 14px 20px; font-size: 14px; font-weight: 600;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .scroll-table { overflow-x: auto; }
+
+        .gf-badge {
+            display: inline-block; background: #e3f2fd;
+            color: #0d47a1; font-size: 10px; padding: 2px 7px;
+            border-radius: 10px; margin-left: 4px;
+        }
+
+        .pre2018 {
+            font-size: 10px; color: #0d47a1; background: #e3f2fd;
+            padding: 2px 6px; border-radius: 4px;
+        }
+
+        .bonus-note {
+            font-size: 10px; color: #6a1b9a; background: #f3e5f5;
+            padding: 2px 6px; border-radius: 4px;
+        }
+
+        .badge-buy     { background: #e3f2fd; color: #0d47a1; }
+        .badge-bonus   { background: #f3e5f5; color: #6a1b9a; }
+        .badge-gift    { background: #fce4ec; color: #880e4f; }
+        .badge-inherit { background: #e8eaf6; color: #283593; }
+
+        .subtotal-row td {
+            background: #f0faf9; font-weight: 600; font-size: 12px;
+            color: #00695c; border-top: 1px solid #b2dfdb;
+            border-bottom: 2px solid #b2dfdb;
+        }
+
+        tr.company-first { background: #f9fffe; }
+
+        .info-note {
+            background: #e0f2f1; border-left: 4px solid #009688;
+            border-radius: 6px; padding: 12px 18px;
+            font-size: 13px; color: #004d40; margin-bottom: 20px;
+        }
+
+        .empty-box {
+            padding: 60px 40px; text-align: center; color: #aaa;
+        }
+
+        .empty-box .e-icon { font-size: 48px; margin-bottom: 12px; }
+    {% endblock %}
+
+    {% block content %}
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="breadcrumb">
+            <a href="{{ url_for('dashboard') }}">Dashboard</a> ›
+            <a href="{{ url_for('client_page', client_id=client[0], fin_year=fin_year) }}">
+                {{ client[1] }}
+            </a> › Closing Stock
+        </div>
+        <div class="page-header-row">
+            <h1>📦 Closing Stock — {{ client[1] }}</h1>
+            <div class="btn-row" style="margin-bottom:0;">
+                <button onclick="window.print()" class="btn btn-outline">🖨️ Print</button>
+                <a href="{{ url_for('calculate', client_id=client[0], fin_year=fin_year) }}"
+                class="btn btn-primary">⚖️ Capital Gains</a>
+            </div>
+        </div>
+        <div class="text-muted mt-4">
+            PAN: {{ client[2] }} · FY {{ fin_year }} ·
+            FIFO across all years
+        </div>
+    </div>
+
+    <!-- Info Note -->
+    <div class="info-note">
+        💡 Shows all <strong>unsold</strong> shares as on the selected date,
+        after FIFO across <strong>all financial years</strong>.
+    </div>
+
+    <!-- Date Selector -->
+    <div class="date-selector-bar">
+        <label style="font-size:13px; font-weight:600; color:#555;">
+            📅 View as on:
+        </label>
+        <select id="dateViewSelect" onchange="handleDateSelect(this)">
+            <option value="year_end" {{ 'selected' if active_view == 'year_end' }}>
+                31-Mar-{{ fin_year.split('-')[1] if fin_year.split('-')[1]|length == 4
+                        else '20' + fin_year.split('-')[1] }} — Year End
+            </option>
+            <option value="today" {{ 'selected' if active_view == 'today' }}>
+                Today ({{ today_str.split('-')[2] }}-{{ today_str.split('-')[1] }}-{{ today_str.split('-')[0] }})
+            </option>
+            <option value="custom" {{ 'selected' if active_view == 'custom' }}>
+                Custom Date...
+            </option>
+        </select>
+
+        <div class="custom-date-wrap {{ 'visible' if active_view == 'custom' }}"
+            id="customDateWrap">
+            <input type="date" id="customDateInput"
+                value="{{ custom_date or '' }}" max="{{ today_str }}">
+            <button class="btn-apply" onclick="applyCustomDate()">Apply</button>
+        </div>
+
+        <span class="active-date-label">
+            📌
+            {% if active_view == 'year_end' %}
+                31-Mar-{{ fin_year.split('-')[1] if fin_year.split('-')[1]|length == 4 else '20' + fin_year.split('-')[1] }}
+            {% elif active_view == 'today' %}
+                {{ today_str.split('-')[2] }}-{{ today_str.split('-')[1] }}-{{ today_str.split('-')[0] }}
+            {% elif active_view == 'custom' and custom_date_display %}
+                {{ custom_date_display }}
+            {% endif %}
+        </span>
+    </div>
+
+    <!-- Errors -->
+    {% if errors %}
+    <div style="background:#ffebee; border-left:4px solid #f44336;
+                border-radius:6px; padding:12px 16px; margin-bottom:16px;">
+        <strong style="color:#c62828;">⚠️ Errors:</strong>
+        <ul style="margin:6px 0 0 16px; font-size:12px; color:#c62828;">
+            {% for err in errors %}<li>{{ err }}</li>{% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- Active View Data -->
+    {% if active_view == 'year_end' %}
+        {% set holdings = closing_year_end %}
+        {% set summary  = summary_year_end %}
+    {% elif active_view == 'today' %}
+        {% set holdings = closing_today %}
+        {% set summary  = summary_today %}
+    {% else %}
+        {% set holdings = closing_custom %}
+        {% set summary  = summary_custom %}
+    {% endif %}
+
+    {% if holdings %}
+
+    <!-- Summary Cards -->
+    <div class="cs-summary-grid">
+        <div class="cs-stat-card">
+            <div class="cs-stat-value">{{ summary.total_companies }}</div>
+            <div class="cs-stat-label">Companies Held</div>
+        </div>
+        <div class="cs-stat-card blue">
+            <div class="cs-stat-value">{{ "{:,}".format(summary.total_shares) }}</div>
+            <div class="cs-stat-label">Total Shares</div>
+        </div>
+        <div class="cs-stat-card blue">
+            <div class="cs-stat-value">₹{{ "{:,.0f}".format(summary.total_cost) }}</div>
+            <div class="cs-stat-label">Total Cost</div>
+        </div>
+        <div class="cs-stat-card purple">
+            <div class="cs-stat-value">₹{{ "{:,.0f}".format(summary.total_grandfathered) }}</div>
+            <div class="cs-stat-label">Grandfathered Cost</div>
+        </div>
+        <div class="cs-stat-card green">
+            <div class="cs-stat-value">{{ "{:,}".format(summary.ltcg_shares) }}</div>
+            <div class="cs-stat-label">LTCG Eligible ({{ summary.ltcg_companies }} co.)</div>
+        </div>
+        <div class="cs-stat-card orange">
+            <div class="cs-stat-value">{{ "{:,}".format(summary.stcg_shares) }}</div>
+            <div class="cs-stat-label">STCG Holdings ({{ summary.stcg_companies }} co.)</div>
+        </div>
+    </div>
+
+    <!-- Holdings Table -->
+    <div class="detail-card">
+        <div class="d-title">
+            <span>Unsold Lots (FIFO)</span>
+            <span style="font-size:12px; font-weight:400; opacity:0.85;">
+                {{ holdings | length }} lots · {{ summary.total_companies }} companies
+            </span>
+        </div>
+        <div class="scroll-table">
+            <table>
+                <thead><tr>
+                    <th>#</th><th>Company</th><th>ISIN</th><th>Type</th>
+                    <th>Buy Date</th><th>Qty</th><th>Cost/Share</th>
+                    <th>Total Cost</th><th>GF Cost/Share</th><th>GF Total</th>
+                    <th>Days</th><th>Years</th><th>Status</th><th>Notes</th>
+                </tr></thead>
+                <tbody>
+                    {% set ns = namespace(prev='', num=0, qty=0, cost=0.0) %}
+                    {% for lot in holdings %}
+                        {% set ns.num = ns.num + 1 %}
+                        {% set is_new = (lot.company != ns.prev) %}
+
+                        {% if is_new and ns.prev != '' %}
+                        <tr class="subtotal-row">
+                            <td colspan="5" style="text-align:right; padding-right:14px;">Subtotal — {{ ns.prev }}</td>
+                            <td>{{ "{:,}".format(ns.qty) }}</td><td>—</td>
+                            <td>₹{{ "{:,.2f}".format(ns.cost) }}</td><td colspan="6"></td>
+                        </tr>
+                        {% set ns.qty = 0 %}{% set ns.cost = 0.0 %}
+                        {% endif %}
+
+                        {% set ns.qty  = ns.qty  + lot.quantity %}
+                        {% set ns.cost = ns.cost + lot.total_cost %}
+                        {% set ns.prev = lot.company %}
+
+                        <tr class="{{ 'company-first' if is_new }}">
+                            <td style="color:#aaa; font-size:11px;">{{ ns.num }}</td>
+                            <td>
+                                {% if is_new %}
+                                    <strong>{{ lot.company }}</strong>
+                                    {% if lot.company_bonus_qty > 0 %}<br><span class="bonus-note">🎁 {{ "{:,}".format(lot.company_bonus_qty) }} bonus</span>{% endif %}
+                                {% else %}<span style="color:#aaa; padding-left:6px;">↳</span>{% endif %}
+                            </td>
+                            <td style="font-size:11px; color:#888;">{{ lot.isin or '—' }}</td>
+                            <td>
+                                {% if lot.label == 'BONUS' %}<span class="badge badge-bonus">🎁 BONUS</span>
+                                {% elif lot.label == 'GIFT' %}<span class="badge badge-gift">🎁 GIFT</span>
+                                {% elif lot.label == 'INHERIT' %}<span class="badge badge-inherit">🏛️ INHERIT</span>
+                                {% else %}<span class="badge badge-buy">BUY</span>{% endif %}
+                            </td>
+                            <td>{{ lot.buy_date }}{% if lot.is_pre_2018 %}<br><span class="pre2018">Pre-2018</span>{% endif %}</td>
+                            <td><strong>{{ "{:,}".format(lot.quantity) }}</strong></td>
+                            <td>{% if lot.is_bonus %}<span style="color:#888;">₹0</span>{% else %}₹{{ "{:,.4f}".format(lot.cost_per_share) }}{% endif %}</td>
+                            <td>₹{{ "{:,.2f}".format(lot.total_cost) }}</td>
+                            <td>{% if lot.grandfathered_cost_per_share %}₹{{ "{:,.2f}".format(lot.grandfathered_cost_per_share) }} <span class="gf-badge">GF</span>{% elif lot.is_pre_2018 and not lot.is_bonus %}<span style="color:#e65100; font-size:11px;">⚠️ FMV needed</span>{% else %}<span style="color:#ccc;">—</span>{% endif %}</td>
+                            <td>{% if lot.grandfathered_total %}₹{{ "{:,.2f}".format(lot.grandfathered_total) }}{% else %}<span style="color:#ccc;">—</span>{% endif %}</td>
+                            <td>{{ "{:,}".format(lot.holding_days) }}</td>
+                            <td>{{ lot.holding_years }} yrs</td>
+                            <td><span class="badge {{ 'badge-ltcg' if lot.status == 'LTCG' else 'badge-stcg' }}">{{ '✅ LTCG' if lot.status == 'LTCG' else '⚠️ STCG' }}</span></td>
+                            <td style="font-size:11px; color:#888; max-width:180px;">{{ lot.notes or '—' }}</td>
+                        </tr>
+                    {% endfor %}
+
+                    <!-- Final subtotal -->
+                    {% if ns.prev != '' %}
+                    <tr class="subtotal-row">
+                        <td colspan="5" style="text-align:right; padding-right:14px;">Subtotal — {{ ns.prev }}</td>
+                        <td>{{ "{:,}".format(ns.qty) }}</td><td>—</td>
+                        <td>₹{{ "{:,.2f}".format(ns.cost) }}</td><td colspan="6"></td>
+                    </tr>
+                    {% endif %}
+
+                    <!-- Grand Total -->
+                    <tr style="background:#009688;">
+                        <td colspan="5" style="color:white; font-weight:700; font-size:13px; padding:12px 14px; text-align:right;">GRAND TOTAL</td>
+                        <td style="color:white; font-weight:700; padding:12px;">{{ "{:,}".format(summary.total_shares) }}</td>
+                        <td style="color:white; padding:12px;">—</td>
+                        <td style="color:white; font-weight:700; padding:12px;">₹{{ "{:,.2f}".format(summary.total_cost) }}</td>
+                        <td style="color:white; padding:12px;">—</td>
+                        <td style="color:white; font-weight:700; padding:12px;">₹{{ "{:,.2f}".format(summary.total_grandfathered) }}</td>
+                        <td colspan="4"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% else %}
+
+    <div class="detail-card">
+        <div class="d-title">Unsold Share Lots</div>
+        <div class="empty-box">
+            <div class="e-icon">✅</div>
+            <p>No unsold holdings as on the selected date.</p>
+        </div>
+    </div>
+
+    {% endif %}
+
+    <div class="text-muted" style="text-align:center; padding-bottom:24px;">
+        Closing stock via FIFO across all years · Capital Gains AI Tool
+    </div>
+
+    {% endblock %}
+
+    {% block extra_script %}
+    <script>
+    function handleDateSelect(sel) {
+        var wrap = document.getElementById('customDateWrap');
+        if (sel.value === 'custom') {
+            wrap.classList.add('visible');
+        } else {
+            wrap.classList.remove('visible');
+            window.location.href = buildUrl(sel.value, '');
+        }
+    }
+
+    function applyCustomDate() {
+        var d = document.getElementById('customDateInput').value;
+        if (!d) { alert('Select a date first.'); return; }
+        window.location.href = buildUrl('custom', d);
+    }
+
+    function buildUrl(view, customDate) {
+        var base = window.location.pathname;
+        var params = '?view=' + view;
+        if (customDate) params += '&custom_date=' + customDate;
+        return base + params;
+    }
+
+    window.onload = function() {
+        if (document.getElementById('dateViewSelect').value === 'custom') {
+            document.getElementById('customDateWrap').classList.add('visible');
+        }
+    };
+    </script>
+    {% endblock %}

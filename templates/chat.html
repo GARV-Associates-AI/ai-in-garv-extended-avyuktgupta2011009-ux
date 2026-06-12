@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Tax Assistant {% if client %}— {{ client[1] }}{% endif %}</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f0f4f8;
+            color: #333;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ---- Top Bar ---- */
+        .topbar {
+            background: #1a237e;
+            color: white;
+            padding: 14px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .topbar h1 { font-size: 18px; }
+        .topbar a { color: white; font-size: 13px; text-decoration: none; opacity: 0.85; }
+
+        /* ---- Header ---- */
+        .chat-header {
+            background: white;
+            padding: 16px 32px;
+            border-bottom: 3px solid #e8eaf6;
+        }
+
+        .chat-header h2 { font-size: 20px; color: #1a237e; }
+        .chat-header .meta { font-size: 13px; color: #888; margin-top: 4px; }
+
+        /* ---- Main chat area ---- */
+        .chat-container {
+            flex: 1;
+            max-width: 900px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        /* ---- Messages area ---- */
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .message {
+            display: flex;
+            gap: 12px;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message .avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 700;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .message.user .avatar { background: #1a237e; }
+        .message.ai .avatar   { background: #2e7d32; }
+
+        .message .bubble {
+            background: white;
+            padding: 12px 16px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            max-width: 78%;
+            font-size: 14px;
+            line-height: 1.55;
+            white-space: pre-wrap;
+        }
+
+        .message.user .bubble {
+            background: #1a237e;
+            color: white;
+        }
+
+        .message.ai .bubble {
+            border-left: 3px solid #2e7d32;
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        /* ---- Loading dots ---- */
+        .loading-dots {
+            display: inline-block;
+        }
+
+        .loading-dots span {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background: #999;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: bounce 1.2s infinite ease-in-out;
+        }
+
+        .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+
+        /* ---- Suggestions ---- */
+        .suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 16px 0;
+        }
+
+        .suggestion-chip {
+            background: white;
+            border: 1.5px solid #c5cae9;
+            color: #1a237e;
+            padding: 7px 14px;
+            border-radius: 18px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .suggestion-chip:hover {
+            background: #1a237e;
+            color: white;
+            border-color: #1a237e;
+        }
+
+        /* ---- Input area ---- */
+        .input-area {
+            background: white;
+            border-radius: 12px;
+            padding: 12px;
+            display: flex;
+            gap: 10px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+        }
+
+        .input-area textarea {
+            flex: 1;
+            border: 1.5px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: none;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .input-area textarea:focus {
+            border-color: #1a237e;
+        }
+
+        .input-area button {
+            background: #1a237e;
+            color: white;
+            border: none;
+            padding: 0 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .input-area button:hover { opacity: 0.9; }
+        .input-area button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* ---- Welcome message ---- */
+        .welcome {
+            text-align: center;
+            padding: 32px 16px;
+            color: #666;
+        }
+
+        .welcome h3 { font-size: 22px; color: #1a237e; margin-bottom: 10px; }
+        .welcome p  { font-size: 14px; max-width: 480px; margin: 0 auto; }
+
+        /* ---- Footer hint ---- */
+        .footer-hint {
+            text-align: center;
+            font-size: 11px;
+            color: #999;
+            margin-top: 8px;
+        }
+
+    </style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div class="topbar">
+    <h1>🤖 AI Tax Assistant</h1>
+    {% if client %}
+        <a href="{{ url_for('client_page', client_id=client[0], fin_year=fin_year) }}">
+            ← Back to Client
+        </a>
+    {% else %}
+        <a href="{{ url_for('dashboard') }}">← Dashboard</a>
+    {% endif %}
+</div>
+
+<!-- Header -->
+<div class="chat-header">
+    {% if client %}
+        <h2>Chat about {{ client[1] }}'s portfolio</h2>
+        <div class="meta">
+            PAN: {{ client[2] }} &nbsp;|&nbsp;
+            FY: {{ fin_year }} &nbsp;|&nbsp;
+            🟢 AI has access to all transaction data
+        </div>
+    {% else %}
+        <h2>General Tax Q&A</h2>
+        <div class="meta">Ask anything about Indian capital gains tax</div>
+    {% endif %}
+</div>
+
+<!-- Chat Area -->
+<div class="chat-container">
+
+    <div class="messages" id="messages">
+
+        <!-- Welcome message -->
+        <div class="welcome">
+            <h3>👋 Hi! I'm your AI Tax Assistant</h3>
+            {% if client %}
+            <p>
+                I have access to {{ client[1] }}'s transactions and tax position.
+                Ask me anything — I'll give you answers based on actual numbers.
+            </p>
+            {% else %}
+            <p>
+                Ask me anything about Indian capital gains tax —
+                rules, calculations, examples, or planning advice.
+            </p>
+            {% endif %}
+        </div>
+
+        <!-- Suggestions -->
+        <div class="suggestions">
+            {% for s in suggestions %}
+            <div class="suggestion-chip" onclick="askSuggestion('{{ s | replace("'", "\\'") }}')">
+                {{ s }}
+            </div>
+            {% endfor %}
+        </div>
+
+    </div>
+
+    <!-- Input Area -->
+    <div class="input-area">
+        <textarea
+            id="question"
+            placeholder="Ask anything... (Press Enter to send, Shift+Enter for new line)"
+            rows="2"
+            onkeydown="handleKey(event)"></textarea>
+        <button id="sendBtn" onclick="sendQuestion()">Send</button>
+    </div>
+
+    <div class="footer-hint">
+        ⚠️ AI may occasionally be inaccurate. Always verify important tax calculations.
+    </div>
+
+</div>
+
+<script>
+    const messagesDiv = document.getElementById("messages");
+    const questionInput = document.getElementById("question");
+    const sendBtn = document.getElementById("sendBtn");
+
+    // Configuration
+    const clientId = {{ client[0] if client else 'null' }};
+    const finYear  = "{{ fin_year if fin_year else '2024-25' }}";
+
+    // Handle Enter key
+    function handleKey(event) {
+        if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            sendQuestion();
+        }
+    }
+
+    // Click on suggestion
+    function askSuggestion(text) {
+        questionInput.value = text;
+        sendQuestion();
+    }
+
+    // Add a message to the chat
+    function addMessage(text, isUser) {
+        const div = document.createElement("div");
+        div.className = "message " + (isUser ? "user" : "ai");
+
+        const avatar = isUser ? "👤" : "🤖";
+
+        div.innerHTML = `
+            <div class="avatar">${avatar}</div>
+            <div class="bubble">${escapeHtml(text)}</div>
+        `;
+
+        messagesDiv.appendChild(div);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        return div;
+    }
+
+    // Escape HTML to prevent injection
+    function escapeHtml(text) {
+        const div = document.createElement("div");
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Show loading indicator
+    function showLoading() {
+        const div = document.createElement("div");
+        div.className = "message ai";
+        div.id = "loading";
+
+        div.innerHTML = `
+            <div class="avatar">🤖</div>
+            <div class="bubble">
+                <span class="loading-dots">
+                    <span></span><span></span><span></span>
+                </span>
+                Thinking...
+            </div>
+        `;
+
+        messagesDiv.appendChild(div);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    // Remove loading indicator
+    function removeLoading() {
+        const loading = document.getElementById("loading");
+        if (loading) loading.remove();
+    }
+
+    // Send question to AI
+    async function sendQuestion() {
+        const question = questionInput.value.trim();
+        if (!question) return;
+
+        // Remove welcome/suggestions on first message
+        const welcome = document.querySelector(".welcome");
+        const suggestions = document.querySelector(".suggestions");
+        if (welcome) welcome.remove();
+        if (suggestions) suggestions.remove();
+
+        addMessage(question, true);
+        questionInput.value = "";
+        sendBtn.disabled = true;
+
+        showLoading();
+
+        try {
+            const url = clientId
+                ? `/ask_ai/${clientId}`
+                : `/ask_ai_general`;
+
+            const response = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    question: question,
+                    fin_year: finYear
+                })
+            });
+
+            const data = await response.json();
+            removeLoading();
+            addMessage(data.answer, false);
+
+        } catch (error) {
+            removeLoading();
+            addMessage("⚠️ Error connecting to AI. Please try again.", false);
+        }
+
+        sendBtn.disabled = false;
+        questionInput.focus();
+    }
+
+    // Focus input on page load
+    questionInput.focus();
+</script>
+
+</body>
+</html>

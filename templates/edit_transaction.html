@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+{% set active_page = "client" %}
+
+{% block title %}Edit Transaction — {{ client[1] }}{% endblock %}
+
+{% block extra_style %}
+    .edit-container {
+        max-width: 680px;
+    }
+
+    .edit-card {
+        border-top: 5px solid #1976d2;
+    }
+
+    .edit-card .card-header {
+        background: #1976d2;
+    }
+
+    .info-bar {
+        background: #e3f2fd;
+        padding: 10px 16px;
+        border-radius: 6px;
+        font-size: 13px;
+        color: #0d47a1;
+        margin-bottom: 20px;
+    }
+
+    .type-hint {
+        font-size: 11px;
+        color: #888;
+        margin-top: 5px;
+        line-height: 1.5;
+        display: none;
+        background: #f5f6fa;
+        padding: 6px 10px;
+        border-radius: 5px;
+        border-left: 3px solid #7986cb;
+    }
+
+    /* ── STT info hint (yellow) ── */
+    .stt-hint {
+        font-size: 10px; color: #e65100;
+        background: #fff8e1; padding: 6px 10px;
+        border-radius: 5px; border-left: 3px solid #ffa000;
+        margin-top: 5px; line-height: 1.4;
+    }
+
+    .btn-save {
+        background: #2e7d32;
+        color: white;
+        flex: 1;
+    }
+
+    .btn-cancel {
+        background: #757575;
+        color: white;
+        flex: 1;
+    }
+{% endblock %}
+
+{% block content %}
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="breadcrumb">
+        <a href="{{ url_for('dashboard') }}">Dashboard</a> ›
+        <a href="{{ url_for('client_page', client_id=client[0], fin_year=fin_year) }}">
+            {{ client[1] }}
+        </a> › Edit Transaction
+    </div>
+    <h1>✏️ Edit Transaction #{{ tx[0] }}</h1>
+</div>
+
+<div class="edit-container">
+    <div class="card edit-card">
+        <div class="card-header" style="background:#1976d2; color:white;">
+            ✏️ Edit Transaction
+        </div>
+        <div class="card-body">
+
+            <!-- Client Info Bar -->
+            <div class="info-bar">
+                <strong>Client:</strong> {{ client[1] }} &nbsp;·&nbsp;
+                <strong>PAN:</strong> {{ client[2] }} &nbsp;·&nbsp;
+                <strong>FY:</strong> {{ fin_year }}
+            </div>
+
+            <form method="POST"
+                  action="{{ url_for('edit_transaction_route', tx_id=tx[0]) }}">
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Date *</label>
+                        <input class="form-control" type="date"
+                               name="date" value="{{ tx[3] }}" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Type *</label>
+                        <select class="form-control" name="type" required
+                                id="txTypeSelect"
+                                onchange="showTypeHint(this.value)">
+
+                            <optgroup label="Normal">
+                                <option value="BUY"
+                                    {% if tx[4] == 'BUY' %}selected{% endif %}>
+                                    BUY
+                                </option>
+                                <option value="SELL"
+                                    {% if tx[4] == 'SELL' %}selected{% endif %}>
+                                    SELL
+                                </option>
+                                <option value="BUYBACK"
+                                    {% if tx[4] == 'BUYBACK' %}selected{% endif %}>
+                                    BUYBACK
+                                </option>
+                                <option value="BONUS"
+                                    {% if tx[4] == 'BONUS' %}selected{% endif %}>
+                                    🎁 BONUS
+                                </option>
+                            </optgroup>
+
+                            <optgroup label="Corporate Action">
+                                <option value="SPLIT"
+                                    {% if tx[4] == 'SPLIT' %}selected{% endif %}>
+                                    ✂️ SPLIT
+                                </option>
+                            </optgroup>
+
+                            <optgroup label="Transfer">
+                                <option value="GIFT"
+                                    {% if tx[4] == 'GIFT' %}selected{% endif %}>
+                                    🎁 GIFT
+                                </option>
+                                <option value="INHERIT"
+                                    {% if tx[4] == 'INHERIT' %}selected{% endif %}>
+                                    🏛️ INHERIT
+                                </option>
+                            </optgroup>
+
+                        </select>
+                        <div class="type-hint" id="typeHint"></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Company Name *</label>
+                    <input class="form-control" type="text"
+                           name="company" value="{{ tx[5] }}"
+                           style="text-transform:uppercase;" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">ISIN (optional)</label>
+                    <input class="form-control" type="text"
+                           name="isin" value="{{ tx[6] or '' }}">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Quantity *</label>
+                        <input class="form-control" type="number"
+                               name="quantity" min="1"
+                               value="{{ tx[7] }}" required
+                               id="qtyInput">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" id="amountLabel">
+                            Total Amount (₹) *
+                        </label>
+                        <input class="form-control" type="number"
+                               name="amount" step="0.01" min="0"
+                               value="{{ tx[8] }}" required
+                               id="amountInput">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Buy Expenses (₹)</label>
+                        <input class="form-control" type="number"
+                               name="buy_expenses" step="0.01" min="0"
+                               value="{{ tx[9] or 0 }}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Sell Expenses (₹)</label>
+                        <input class="form-control" type="number"
+                               name="sell_expenses" step="0.01" min="0"
+                               value="{{ tx[10] or 0 }}">
+                    </div>
+                </div>
+
+                <!-- ✨ NEW: STT field ─────────────────────────── -->
+                <div class="form-group">
+                    <label class="form-label">
+                        STT — Securities Transaction Tax (₹)
+                    </label>
+                    <input class="form-control" type="number"
+                           name="stt" step="0.01" min="0"
+                           value="{{ tx[11] or 0 }}"
+                           placeholder="0 if not applicable"
+                           id="sttInput">
+                    <div class="stt-hint">
+                        ℹ️ STT is INFORMATIONAL only — Section 40(a)(ib) says
+                        STT is NOT deductible from capital gains. Stored for records.
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Notes</label>
+                    <input class="form-control" type="text"
+                           name="notes" value="{{ tx[12] or '' }}">
+                </div>
+
+                <div class="btn-row" style="margin-top:24px;">
+                    <a href="{{ url_for('client_page', client_id=client[0], fin_year=fin_year) }}"
+                       class="btn btn-cancel"
+                       style="justify-content:center;">
+                        ✕ Cancel
+                    </a>
+                    <button type="submit" class="btn btn-save"
+                            style="justify-content:center;">
+                        💾 Save Changes
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const hints = {
+        "BUY"    : "💡 STT typically applies on buy — check contract note.",
+        "SELL"   : "💡 STT @ 0.1% of value usually applies on delivery sell.",
+        "BUYBACK": "💡 STT @ 0.2% may apply on buyback value.",
+        "BONUS"  : "💡 Amount = 0. STT = 0 (no trade — free shares).",
+        "SPLIT"  : "💡 Amount = split ratio. STT = 0 (no trade).",
+        "GIFT"   : "💡 Date = donor's buy date. STT = 0 (no trade by you).",
+        "INHERIT": "💡 Date = original owner's buy date. STT = 0."
+    };
+
+    function showTypeHint(selectedType) {
+        const hintBox     = document.getElementById("typeHint");
+        const amountLabel = document.getElementById("amountLabel");
+        const amountInput = document.getElementById("amountInput");
+        const qtyInput    = document.getElementById("qtyInput");
+        const hint        = hints[selectedType] || "";
+
+        hintBox.textContent   = hint;
+        hintBox.style.display = hint ? "block" : "none";
+
+        if (selectedType === "SPLIT") {
+            amountLabel.textContent = "Split Ratio *";
+            amountInput.placeholder = "e.g. 2 for 2:1";
+            if (!qtyInput.value || qtyInput.value === "0") {
+                qtyInput.value = "1";
+            }
+        } else {
+            amountLabel.textContent = "Total Amount (₹) *";
+            amountInput.placeholder = "Total, not per share";
+        }
+    }
+
+    // Show hint on page load for existing type
+    window.addEventListener("load", function() {
+        const select = document.getElementById("txTypeSelect");
+        if (select) showTypeHint(select.value);
+    });
+</script>
+{% endblock %}

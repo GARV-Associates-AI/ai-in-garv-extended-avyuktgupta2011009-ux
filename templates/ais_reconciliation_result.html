@@ -1,0 +1,1075 @@
+{% extends "base.html" %}
+{% set active_page = "client" %}
+
+{% block title %}AIS Reconciliation — {{ client_name }}{% endblock %}
+
+{% block extra_style %}
+<style>
+
+    .recon-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        margin-bottom: 24px;
+    }
+    @media (max-width: 900px) {
+        .recon-summary-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 500px) {
+        .recon-summary-grid { grid-template-columns: 1fr; }
+    }
+
+    .recon-stat-card {
+        background: white;
+        border-radius: 10px;
+        padding: 16px 18px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+        border-top: 4px solid #ccc;
+        text-align: center;
+    }
+    .recon-stat-card.green  { border-top-color: #2e7d32; }
+    .recon-stat-card.yellow { border-top-color: #f57c00; }
+    .recon-stat-card.orange { border-top-color: #e64a19; }
+    .recon-stat-card.red    { border-top-color: #c62828; }
+    .recon-stat-card.blue   { border-top-color: #1565c0; }
+
+    .recon-stat-number {
+        font-size: 32px;
+        font-weight: 800;
+        line-height: 1;
+        margin-bottom: 4px;
+    }
+    .recon-stat-card.green  .recon-stat-number { color: #2e7d32; }
+    .recon-stat-card.yellow .recon-stat-number { color: #f57c00; }
+    .recon-stat-card.orange .recon-stat-number { color: #e64a19; }
+    .recon-stat-card.red    .recon-stat-number { color: #c62828; }
+    .recon-stat-card.blue   .recon-stat-number { color: #1565c0; }
+
+    .recon-stat-label {
+        font-size: 11px;
+        font-weight: 700;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+
+    .recon-section {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+
+    .recon-section-header {
+        padding: 12px 18px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+        font-weight: 700;
+        flex-wrap: wrap;
+        justify-content: space-between;
+    }
+    .recon-section-header.green {
+        background: linear-gradient(to right, #e8f5e9, #c8e6c9);
+        color: #1b5e20;
+    }
+    .recon-section-header.yellow {
+        background: linear-gradient(to right, #fff8e1, #ffecb3);
+        color: #e65100;
+    }
+    .recon-section-header.orange {
+        background: linear-gradient(to right, #fbe9e7, #ffccbc);
+        color: #bf360c;
+    }
+    .recon-section-header.red {
+        background: linear-gradient(to right, #ffebee, #ffcdd2);
+        color: #b71c1c;
+    }
+    .recon-section-header.blue {
+        background: linear-gradient(to right, #e3f2fd, #bbdefb);
+        color: #0d47a1;
+    }
+
+    .recon-count-badge {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 3px 10px;
+        border-radius: 10px;
+        background: rgba(255,255,255,0.6);
+    }
+
+    .ais-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+    }
+    .ais-table th {
+        background: #f5f6fa;
+        padding: 7px 10px;
+        text-align: center;
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        color: #666;
+        border-bottom: 2px solid #e0e0e0;
+        white-space: nowrap;
+    }
+    .ais-table th.group-buy   { background: #e8f5e9; color: #1b5e20; }
+    .ais-table th.group-sell  { background: #ffebee; color: #b71c1c; }
+    .ais-table th.group-info  { background: #e3f2fd; color: #0d47a1; }
+    .ais-table td {
+        padding: 8px 10px;
+        border-bottom: 1px solid #f0f0f0;
+        text-align: right;
+        vertical-align: middle;
+    }
+    .ais-table td.left { text-align: left; }
+    .ais-table tr.expandable { cursor: pointer; transition: background 0.1s; }
+    .ais-table tr.expandable:hover { background: #fafafa; }
+    .ais-table tr.expandable.open td { background: #fff8e1; }
+
+    .diff-cell.zero    { color: #2e7d32; font-weight: 700; }
+    .diff-cell.pos     { color: #1565c0; font-weight: 700; }
+    .diff-cell.neg     { color: #c62828; font-weight: 700; }
+
+    .col-divider { border-left: 2px solid #e0e0e0; }
+
+    .drill-row { display: none; background: #fafbfc; }
+    .drill-row.open { display: table-row; }
+
+    .drill-content {
+        padding: 16px 24px;
+        background: #fafbfc;
+    }
+
+    .drill-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+    }
+    @media (max-width: 800px) {
+        .drill-grid { grid-template-columns: 1fr; }
+    }
+
+    .drill-section {
+        background: white;
+        border-radius: 8px;
+        border: 1.5px solid #e0e0e0;
+        overflow: hidden;
+    }
+
+    .drill-section-title {
+        padding: 8px 12px;
+        font-size: 12px;
+        font-weight: 700;
+        color: white;
+    }
+    .drill-section-title.buy  { background: #2e7d32; }
+    .drill-section-title.sell { background: #c62828; }
+
+    .drill-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+    }
+    .drill-table th {
+        background: #f5f6fa;
+        padding: 6px 8px;
+        text-align: center;
+        font-size: 9px;
+        font-weight: 700;
+        color: #666;
+        text-transform: uppercase;
+    }
+    .drill-table td {
+        padding: 6px 8px;
+        text-align: right;
+        border-bottom: 1px solid #f5f5f5;
+    }
+    .drill-table td.left { text-align: left; }
+    .drill-table tr:last-child td { border-bottom: none; }
+
+    .drill-empty {
+        padding: 12px;
+        text-align: center;
+        color: #aaa;
+        font-size: 11px;
+        font-style: italic;
+    }
+
+    .tier-badge {
+        display: inline-block;
+        font-size: 9px;
+        font-weight: 700;
+        padding: 1px 6px;
+        border-radius: 6px;
+        white-space: nowrap;
+        margin-left: 4px;
+    }
+    .tier-isin   { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+    .tier-name   { background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; }
+    .tier-master { background: #e8eaf6; color: #283593; border: 1px solid #9fa8da; }
+    .tier-fuzzy  { background: #f3e5f5; color: #6a1b9a; border: 1px solid #ce93d8; }
+    .tier-user   { background: #fff8e1; color: #f57c00; border: 1px solid #ffe082; }
+
+    .isin-mono {
+        font-family: monospace;
+        font-size: 10px;
+        color: #888;
+    }
+
+    .expand-chevron {
+        display: inline-block;
+        font-size: 10px;
+        color: #888;
+        transition: transform 0.2s;
+        margin-right: 4px;
+    }
+    .expand-chevron.open {
+        transform: rotate(90deg);
+        color: #f57c00;
+    }
+
+    .ambig-card {
+        background: #f8f9ff;
+        border: 1.5px solid #90caf9;
+        border-radius: 8px;
+        padding: 14px 16px;
+        margin-bottom: 12px;
+    }
+    .ambig-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: #0d47a1;
+        margin-bottom: 10px;
+    }
+    .ambig-dp-name {
+        display: inline-block;
+        background: #e3f2fd;
+        color: #0d47a1;
+        padding: 3px 10px;
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 13px;
+        margin-bottom: 8px;
+    }
+    .ambig-option {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        border-radius: 6px;
+        border: 1.5px solid #e0e0e0;
+        margin-bottom: 6px;
+        cursor: pointer;
+        transition: all 0.1s;
+        background: white;
+    }
+    .ambig-option:hover { border-color: #1976d2; background: #f0f7ff; }
+    .ambig-option input[type="radio"] {
+        accent-color: #1976d2;
+        width: 16px; height: 16px;
+        flex-shrink: 0;
+    }
+    .ambig-option-name { font-weight: 700; font-size: 13px; color: #333; }
+    .ambig-option-score { font-size: 11px; color: #888; margin-left: auto; }
+    .ambig-option-none { border-color: #ffcc80; background: #fffde7; }
+    .ambig-option-none:hover { border-color: #ffa000; background: #fff8e1; }
+
+    .recon-empty {
+        padding: 24px;
+        text-align: center;
+        color: #aaa;
+        font-size: 13px;
+    }
+
+    .recon-action-bar {
+        background: #f5f6fa;
+        border-radius: 10px;
+        padding: 16px 20px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 24px;
+        border: 1.5px solid #e0e0e0;
+    }
+
+    .table-wrap { overflow-x: auto; }
+
+    /* Day 16 Phase 5 — master DB checkbox style */
+    .mdb-save-cell {
+        background: #e8eaf6 !important;
+    }
+    .mdb-save-label {
+        font-size: 10px;
+        color: #283593;
+        display: block;
+        margin-top: 3px;
+        font-weight: 600;
+    }
+
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <div class="breadcrumb">
+        <a href="{{ url_for('dashboard') }}">Dashboard</a> ›
+        <a href="{{ url_for('client_page', client_id=client_id) }}">
+            {{ client_name }}
+        </a> ›
+        AIS Reconciliation
+    </div>
+    <div class="page-header-row">
+        <h1>📊 AIS Reconciliation Result</h1>
+        <div class="btn-row" style="margin-bottom:0;">
+            <a href="{{ url_for('client_page', client_id=client_id) }}"
+               class="btn btn-outline">
+                ← Back to Client
+            </a>
+        </div>
+    </div>
+    <div class="text-muted mt-4">
+        {{ client_name }} · FY {{ fin_year }}
+        {% if filename %}
+        · Source: <span style="background:#e8eaf6; padding:1px 6px;
+                     border-radius:4px; font-size:11px;
+                     font-weight:600; color:#3949ab;">
+                {{ filename }}
+        </span>
+        {% endif %}
+    </div>
+</div>
+
+{% if ambiguous %}
+<div class="recon-section" style="border-left:4px solid #1976d2;">
+    <div class="recon-section-header blue">
+        <span>🤔 Ambiguous Matches — Please Pick the Right Company</span>
+        <span class="recon-count-badge">{{ ambiguous|length }} to resolve</span>
+    </div>
+
+    <div style="padding:16px 18px;">
+
+        <div style="background:#e3f2fd; border-left:4px solid #1976d2;
+                    border-radius:6px; padding:10px 14px; margin-bottom:16px;
+                    font-size:12px; color:#0d47a1; line-height:1.6;">
+            ℹ️ The app found <strong>multiple possible matches</strong>
+            for these AIS companies. Please select the correct match
+            for each, or choose "No match" to mark them as AIS-only.
+        </div>
+
+        <form method="POST"
+              action="{{ url_for('resolve_ais_ambiguous',
+                         client_id=client_id) }}">
+
+            {% for item in ambiguous %}
+            <div class="ambig-card">
+                <div class="ambig-title">
+                    AIS Company: &nbsp;
+                    <span class="ambig-dp-name">{{ item.ais_company }}</span>
+                    {% if item.ais_isin %}
+                    <span class="isin-mono">
+                        &nbsp;({{ item.ais_isin }})
+                    </span>
+                    {% endif %}
+                </div>
+
+                <div style="font-size:11px; color:#555; margin-bottom:8px;">
+                    Select the correct app company:
+                </div>
+
+                {% for candidate in item.candidates %}
+                <label class="ambig-option">
+                    <input type="radio"
+                           name="choice_{{ item.ais_key }}"
+                           value="{{ candidate.key }}">
+                    <div>
+                        <div class="ambig-option-name">
+                            {{ candidate.company }}
+                        </div>
+                        {% if candidate.isin %}
+                        <div class="isin-mono">{{ candidate.isin }}</div>
+                        {% endif %}
+                    </div>
+                    <span class="ambig-option-score">
+                        {{ candidate.score }}% match
+                    </span>
+                </label>
+                {% endfor %}
+
+                <label class="ambig-option ambig-option-none">
+                    <input type="radio"
+                           name="choice_{{ item.ais_key }}"
+                           value="none"
+                           checked>
+                    <div>
+                        <div class="ambig-option-name"
+                             style="color:#e65100;">
+                            ❌ No match (treat as AIS Only)
+                        </div>
+                        <div style="font-size:11px; color:#888; margin-top:2px;">
+                            The app doesn't have this company
+                        </div>
+                    </div>
+                </label>
+
+            </div>
+            {% endfor %}
+
+            <div style="margin-top:16px;">
+                <button type="submit" class="btn btn-primary">
+                    ✅ Confirm Choices & Re-run Reconciliation
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% if not ambiguous %}
+<div class="recon-action-bar">
+    <a href="{{ url_for('download_ais_reconciliation_excel',
+               client_id=client_id) }}"
+       class="btn btn-success">
+        📥 Download Excel Report (5 sheets)
+    </a>
+    <a href="{{ url_for('client_page', client_id=client_id) }}"
+       class="btn btn-outline">
+        🔄 Run Again (new AIS PDF)
+    </a>
+    <span class="text-muted" style="font-size:12px;">
+        Click any row in the tables below to see per-date breakdown.
+    </span>
+</div>
+{% endif %}
+
+{% if not ambiguous and result %}
+
+{% set rn = namespace(list=[]) %}
+{% for row in result.matched + result.mismatched %}
+    {% set ais_name = row.ais_company or row.company or '' %}
+    {% set app_name = row.app_company or '' %}
+    {% if row.match_tier
+       and row.match_tier != 'name_exact'
+       and app_name
+       and app_name|upper|trim != ais_name|upper|trim %}
+        {% set _ = rn.list.append(row) %}
+    {% endif %}
+{% endfor %}
+
+{% if rn.list %}
+<div class="recon-section" style="border-left:4px solid #6a1b9a;">
+    <div class="recon-section-header"
+         style="background:linear-gradient(to right, #f3e5f5, #e1bee7);
+                color:#4a148c;">
+        <span>🔄 Standardize Company Names
+            <small style="font-weight:400; font-size:11px;">
+                (clean up short forms using AIS official names)
+            </small>
+        </span>
+        <span class="recon-count-badge">{{ rn.list|length }} available</span>
+    </div>
+
+    <div style="padding:14px 18px;">
+
+        <div style="background:#f3e5f5; border-left:4px solid #6a1b9a;
+                    border-radius:6px; padding:10px 14px; margin-bottom:14px;
+                    font-size:12px; color:#4a148c; line-height:1.6;">
+            ℹ️ <strong>Why standardize?</strong> The app currently uses short
+            forms (like "ABFRL", "IOC") but AIS gives the full official names.
+            Renaming will make future AIS / DP reconciliations match instantly
+            via ISIN — no more fuzzy matching needed!
+            <br><br>
+            <strong>What happens:</strong>
+            <ul style="margin:4px 0 0 18px; padding:0;">
+                <li>Company name → renamed in ALL transactions of this client</li>
+                <li>ISIN → auto-filled where currently empty</li>
+                <li>Other clients are NOT affected</li>
+            </ul>
+            <br>
+            <strong>📚 New Day 16:</strong> You can also tick
+            <em>"Also save to Master DB"</em> to remember the short form
+            globally — future imports will match it instantly.
+        </div>
+
+        <form method="POST"
+              action="{{ url_for('apply_renames', client_id=client_id) }}"
+              id="renameForm"
+              onsubmit="return confirmRenames();">
+
+            <input type="hidden" name="source" value="ais">
+
+            <div class="table-wrap">
+                <table class="ais-table" style="font-size:12px;">
+                    <thead>
+                        <tr>
+                            <th style="width:40px;">
+                                <input type="checkbox"
+                                       id="selectAllRenames"
+                                       checked
+                                       onchange="toggleAllRenames(this)">
+                            </th>
+                            <th style="width:40px;">#</th>
+                            <th class="left">Current Name (App)</th>
+                            <th style="width:30px;"></th>
+                            <th class="left">Official Name (AIS)</th>
+                            <th>ISIN</th>
+                            <th>Match Type</th>
+                            <th style="width:130px;" class="mdb-save-cell">
+                                📚 Master DB
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rn.list %}
+                        {% set ais_name = row.ais_company or row.company or '' %}
+                        {% set app_name = row.app_company or '' %}
+                        {% set has_isin = row.isin and row.isin|length == 12 %}
+                        <tr>
+                            <td style="text-align:center;">
+                                <input type="checkbox"
+                                       class="rename-checkbox"
+                                       name="rename_{{ loop.index }}"
+                                       value="{{ app_name }}|||{{ ais_name }}|||{{ row.isin or '' }}"
+                                       checked>
+                            </td>
+                            <td style="color:#aaa;">{{ loop.index }}</td>
+                            <td class="left" style="color:#c62828;">
+                                <em style="font-style:normal;">
+                                    {{ app_name }}
+                                </em>
+                            </td>
+                            <td style="text-align:center; color:#6a1b9a;
+                                       font-size:18px;">→</td>
+                            <td class="left">
+                                <strong style="color:#1b5e20;">
+                                    {{ ais_name }}
+                                </strong>
+                            </td>
+                            <td class="isin-mono">
+                                {{ row.isin if row.isin else '—' }}
+                            </td>
+                            <td>
+                                {% set tier = row.match_tier or '' %}
+                                {% if tier == 'isin' %}
+                                    <span class="tier-badge tier-isin">ISIN</span>
+                                {% elif tier == 'master_db' %}
+                                    <span class="tier-badge tier-master">Master DB</span>
+                                {% elif tier.startswith('fuzzy') %}
+                                    <span class="tier-badge tier-fuzzy">
+                                        {{ tier.replace('fuzzy_','') }}%
+                                    </span>
+                                {% elif tier == 'user_picked' %}
+                                    <span class="tier-badge tier-user">Picked</span>
+                                {% else %}
+                                    <span style="color:#ccc;">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="mdb-save-cell" style="text-align:center;">
+                                {% if has_isin %}
+                                <input type="checkbox"
+                                       class="mdb-save-checkbox"
+                                       name="mdb_save_{{ loop.index }}"
+                                       value="{{ app_name }}|||{{ ais_name }}|||{{ row.isin }}"
+                                       title="Save '{{ app_name }}' as alias for {{ ais_name }} in Master DB">
+                                <span class="mdb-save-label">
+                                    Save alias
+                                </span>
+                                {% else %}
+                                <span style="color:#aaa; font-size:10px;"
+                                      title="ISIN required to save in Master DB">
+                                    no ISIN
+                                </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="margin-top:14px; display:flex; gap:10px;
+                        align-items:center; flex-wrap:wrap;">
+                <button type="submit" class="btn"
+                        style="background:#6a1b9a; color:white;">
+                    🔄 Apply Selected Renames
+                </button>
+                <button type="button" class="btn btn-outline btn-sm"
+                        onclick="checkAllMdb()">
+                    📚 Check All Master DB
+                </button>
+                <button type="button" class="btn btn-outline btn-sm"
+                        onclick="uncheckAllMdb()">
+                    ❌ Uncheck All Master DB
+                </button>
+                <span class="text-muted" style="font-size:11px;">
+                    Only checked rows will be renamed. Master DB checkboxes are optional.
+                </span>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% endif %}
+
+<div class="recon-summary-grid">
+
+    <div class="recon-stat-card green">
+        <div class="recon-stat-number">
+            {{ result.matched|length if result else 0 }}
+        </div>
+        <div class="recon-stat-label">✅ Perfect Match</div>
+    </div>
+
+    <div class="recon-stat-card yellow">
+        <div class="recon-stat-number">
+            {{ result.mismatched|length if result else 0 }}
+        </div>
+        <div class="recon-stat-label">⚠️ Mismatched</div>
+    </div>
+
+    <div class="recon-stat-card orange">
+        <div class="recon-stat-number">
+            {{ result.ais_only|length if result else 0 }}
+        </div>
+        <div class="recon-stat-label">❌ AIS Only</div>
+    </div>
+
+    <div class="recon-stat-card red">
+        <div class="recon-stat-number">
+            {{ result.app_only|length if result else 0 }}
+        </div>
+        <div class="recon-stat-label">❌ App Only</div>
+    </div>
+
+</div>
+
+{% if result %}
+
+{% macro render_comparison_table(rows, table_id) %}
+<div class="table-wrap">
+    <table class="ais-table">
+        <thead>
+            <tr>
+                <th rowspan="2">#</th>
+                <th rowspan="2" class="left">Company</th>
+                <th rowspan="2">Match</th>
+                <th colspan="3" class="group-buy">BUY (Purchase)</th>
+                <th colspan="3" class="group-buy">BUY VALUE</th>
+                <th colspan="3" class="group-sell">SELL (Sale)</th>
+                <th colspan="3" class="group-sell">SELL VALUE</th>
+            </tr>
+            <tr>
+                <th class="group-buy">App Qty</th>
+                <th class="group-buy">AIS Qty</th>
+                <th class="group-buy">Diff</th>
+                <th class="group-buy">App ₹</th>
+                <th class="group-buy">AIS ₹</th>
+                <th class="group-buy">Diff</th>
+                <th class="group-sell">App Qty</th>
+                <th class="group-sell">AIS Qty</th>
+                <th class="group-sell">Diff</th>
+                <th class="group-sell">App ₹</th>
+                <th class="group-sell">AIS ₹</th>
+                <th class="group-sell">Diff</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            {% set rid = table_id ~ '_' ~ loop.index %}
+            <tr class="expandable" onclick="toggleAisDrill('{{ rid }}')">
+                <td class="left" style="color:#aaa;">
+                    <span class="expand-chevron"
+                          id="chev_{{ rid }}">▶</span>
+                    {{ loop.index }}
+                </td>
+                <td class="left">
+                    <strong>{{ row.company }}</strong>
+                    {% if row.isin %}
+                    <div class="isin-mono">{{ row.isin }}</div>
+                    {% endif %}
+                </td>
+                <td>
+                    {% set tier = row.match_tier or '' %}
+                    {% if tier == 'isin' %}
+                        <span class="tier-badge tier-isin">ISIN</span>
+                    {% elif tier == 'name_exact' %}
+                        <span class="tier-badge tier-name">Name</span>
+                    {% elif tier == 'master_db' %}
+                        <span class="tier-badge tier-master">Master DB</span>
+                    {% elif tier.startswith('fuzzy') %}
+                        <span class="tier-badge tier-fuzzy">
+                            {{ tier.replace('fuzzy_','') }}%
+                        </span>
+                    {% elif tier == 'user_picked' %}
+                        <span class="tier-badge tier-user">Picked</span>
+                    {% else %}
+                        <span style="color:#ccc;">—</span>
+                    {% endif %}
+                </td>
+                <td>{{ "{:,.0f}".format(row.app_buy_qty) }}</td>
+                <td>{{ "{:,.0f}".format(row.ais_buy_qty) }}</td>
+                <td class="diff-cell
+                    {% if row.buy_qty_diff == 0 %}zero
+                    {% elif row.buy_qty_diff > 0 %}pos
+                    {% else %}neg{% endif %}">
+                    {% if row.buy_qty_diff > 0 %}+{% endif %}{{ "{:,.0f}".format(row.buy_qty_diff) }}
+                </td>
+                <td>{{ "{:,.2f}".format(row.app_buy_val) }}</td>
+                <td>{{ "{:,.2f}".format(row.ais_buy_val) }}</td>
+                <td class="diff-cell
+                    {% if row.buy_val_diff == 0 %}zero
+                    {% elif row.buy_val_diff > 0 %}pos
+                    {% else %}neg{% endif %}">
+                    {% if row.buy_val_diff > 0 %}+{% endif %}{{ "{:,.2f}".format(row.buy_val_diff) }}
+                </td>
+                <td>{{ "{:,.0f}".format(row.app_sell_qty) }}</td>
+                <td>{{ "{:,.0f}".format(row.ais_sell_qty) }}</td>
+                <td class="diff-cell
+                    {% if row.sell_qty_diff == 0 %}zero
+                    {% elif row.sell_qty_diff > 0 %}pos
+                    {% else %}neg{% endif %}">
+                    {% if row.sell_qty_diff > 0 %}+{% endif %}{{ "{:,.0f}".format(row.sell_qty_diff) }}
+                </td>
+                <td>{{ "{:,.2f}".format(row.app_sell_val) }}</td>
+                <td>{{ "{:,.2f}".format(row.ais_sell_val) }}</td>
+                <td class="diff-cell
+                    {% if row.sell_val_diff == 0 %}zero
+                    {% elif row.sell_val_diff > 0 %}pos
+                    {% else %}neg{% endif %}">
+                    {% if row.sell_val_diff > 0 %}+{% endif %}{{ "{:,.2f}".format(row.sell_val_diff) }}
+                </td>
+            </tr>
+            <tr class="drill-row" id="drill_{{ rid }}">
+                <td colspan="15">
+                    <div class="drill-content">
+                        <div class="drill-grid">
+
+                            <div class="drill-section">
+                                <div class="drill-section-title buy">
+                                    🟢 BUY — Per Date Comparison
+                                </div>
+                                {% if row.detail and row.detail.buys %}
+                                <table class="drill-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="left">Date</th>
+                                            <th>App Qty</th>
+                                            <th>AIS Qty</th>
+                                            <th>Qty Diff</th>
+                                            <th>App ₹</th>
+                                            <th>AIS ₹</th>
+                                            <th>Val Diff</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for d in row.detail.buys %}
+                                        <tr>
+                                            <td class="left">{{ d.date }}</td>
+                                            <td>{{ "{:,.0f}".format(d.app_qty) }}</td>
+                                            <td>{{ "{:,.0f}".format(d.ais_qty) }}</td>
+                                            <td class="diff-cell
+                                                {% if d.qty_diff == 0 %}zero
+                                                {% elif d.qty_diff > 0 %}pos
+                                                {% else %}neg{% endif %}">
+                                                {% if d.qty_diff > 0 %}+{% endif %}{{ "{:,.0f}".format(d.qty_diff) }}
+                                            </td>
+                                            <td>{{ "{:,.2f}".format(d.app_val) }}</td>
+                                            <td>{{ "{:,.2f}".format(d.ais_val) }}</td>
+                                            <td class="diff-cell
+                                                {% if d.val_diff == 0 %}zero
+                                                {% elif d.val_diff > 0 %}pos
+                                                {% else %}neg{% endif %}">
+                                                {% if d.val_diff > 0 %}+{% endif %}{{ "{:,.2f}".format(d.val_diff) }}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                {% else %}
+                                <div class="drill-empty">
+                                    No BUY transactions
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="drill-section">
+                                <div class="drill-section-title sell">
+                                    🔴 SELL — Per Date Comparison
+                                </div>
+                                {% if row.detail and row.detail.sells %}
+                                <table class="drill-table">
+                                    <thead>
+                                        <tr>
+                                            <th class="left">Date</th>
+                                            <th>App Qty</th>
+                                            <th>AIS Qty</th>
+                                            <th>Qty Diff</th>
+                                            <th>App ₹</th>
+                                            <th>AIS ₹</th>
+                                            <th>Val Diff</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for d in row.detail.sells %}
+                                        <tr>
+                                            <td class="left">{{ d.date }}</td>
+                                            <td>{{ "{:,.0f}".format(d.app_qty) }}</td>
+                                            <td>{{ "{:,.0f}".format(d.ais_qty) }}</td>
+                                            <td class="diff-cell
+                                                {% if d.qty_diff == 0 %}zero
+                                                {% elif d.qty_diff > 0 %}pos
+                                                {% else %}neg{% endif %}">
+                                                {% if d.qty_diff > 0 %}+{% endif %}{{ "{:,.0f}".format(d.qty_diff) }}
+                                            </td>
+                                            <td>{{ "{:,.2f}".format(d.app_val) }}</td>
+                                            <td>{{ "{:,.2f}".format(d.ais_val) }}</td>
+                                            <td class="diff-cell
+                                                {% if d.val_diff == 0 %}zero
+                                                {% elif d.val_diff > 0 %}pos
+                                                {% else %}neg{% endif %}">
+                                                {% if d.val_diff > 0 %}+{% endif %}{{ "{:,.2f}".format(d.val_diff) }}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                {% else %}
+                                <div class="drill-empty">
+                                    No SELL transactions
+                                </div>
+                                {% endif %}
+                            </div>
+
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endmacro %}
+
+<div class="recon-section">
+    <div class="recon-section-header green">
+        <span>✅ Perfect Match
+            <small style="font-weight:400; font-size:11px;">
+                (all 4 diffs = 0)
+            </small>
+        </span>
+        <span class="recon-count-badge">{{ result.matched|length }}</span>
+    </div>
+
+    {% if result.matched %}
+        {{ render_comparison_table(result.matched, 'matched') }}
+    {% else %}
+        <div class="recon-empty">No perfect matches found.</div>
+    {% endif %}
+</div>
+
+<div class="recon-section">
+    <div class="recon-section-header yellow">
+        <span>⚠️ Mismatched
+            <small style="font-weight:400; font-size:11px;">
+                (qty or value differs)
+            </small>
+        </span>
+        <span class="recon-count-badge">{{ result.mismatched|length }}</span>
+    </div>
+
+    {% if result.mismatched %}
+
+    <div style="padding:10px 18px 4px;">
+        <div style="background:#fff8e1; border-left:4px solid #f57c00;
+                    border-radius:6px; padding:10px 12px;
+                    font-size:11px; color:#5d4037; line-height:1.6;">
+            ⚠️ Companies matched between App and AIS but with
+            <strong>quantity or value differences</strong>. Click any row
+            to drill down per date. Diff = <strong>App − AIS</strong>.
+        </div>
+    </div>
+
+        {{ render_comparison_table(result.mismatched, 'mismatched') }}
+    {% else %}
+        <div class="recon-empty">
+            🎉 No mismatches — all matched companies have correct figures!
+        </div>
+    {% endif %}
+</div>
+
+<div class="recon-section">
+    <div class="recon-section-header orange">
+        <span>❌ In AIS Only
+            <small style="font-weight:400; font-size:11px;">
+                (not entered in app)
+            </small>
+        </span>
+        <span class="recon-count-badge">{{ result.ais_only|length }}</span>
+    </div>
+
+    {% if result.ais_only %}
+
+    <div style="padding:10px 18px 4px;">
+        <div style="background:#fbe9e7; border-left:4px solid #e64a19;
+                    border-radius:6px; padding:10px 12px;
+                    font-size:11px; color:#bf360c; line-height:1.6;">
+            ⚠️ These companies appear in <strong>AIS</strong> (Income Tax)
+            but have <strong>NO matching entry in the app</strong>.
+            Likely <strong>missed transactions</strong> — add them
+            before filing ITR.
+        </div>
+    </div>
+
+        {{ render_comparison_table(result.ais_only, 'ais_only') }}
+    {% else %}
+        <div class="recon-empty">
+            ✅ All AIS transactions are recorded in the app!
+        </div>
+    {% endif %}
+</div>
+
+<div class="recon-section">
+    <div class="recon-section-header red">
+        <span>❌ In App Only
+            <small style="font-weight:400; font-size:11px;">
+                (not in AIS)
+            </small>
+        </span>
+        <span class="recon-count-badge">{{ result.app_only|length }}</span>
+    </div>
+
+    {% if result.app_only %}
+
+    <div style="padding:10px 18px 4px;">
+                <div style="background:#ffebee; border-left:4px solid #c62828;
+                    border-radius:6px; padding:10px 12px;
+                    font-size:11px; color:#b71c1c; line-height:1.6;">
+            ⚠️ These companies are in <strong>app</strong> but
+            <strong>not reported in AIS</strong>. Possible reasons:
+            off-market transfers, broker didn't report, or name mismatch.
+        </div>
+        <div style="background:#fff8e1; border-left:4px solid #f57c00;
+                    border-radius:6px; padding:10px 12px; margin-top:8px;
+                    font-size:11px; color:#5d4037; line-height:1.6;">
+            💡 <strong>Note about Purchases:</strong> Some AIS PDFs show
+            purchases only as a <strong>client-level summary</strong>
+            (no per-share details). In that case, app BUY entries will
+            appear here even though they were actually reported.
+            Check the AIS PDF's "Purchase of securities" section —
+            if it only shows total amount, this is normal.
+        </div>
+    </div>
+
+        {{ render_comparison_table(result.app_only, 'app_only') }}
+    {% else %}
+        <div class="recon-empty">
+            ✅ All app transactions are reported in AIS!
+        </div>
+    {% endif %}
+</div>
+
+{% if not ambiguous %}
+<div class="recon-action-bar">
+    <a href="{{ url_for('download_ais_reconciliation_excel',
+               client_id=client_id) }}"
+       class="btn btn-success">
+        📥 Download Excel Report
+    </a>
+    <a href="{{ url_for('client_page', client_id=client_id) }}"
+       class="btn btn-outline">
+        ← Back to Client
+    </a>
+</div>
+{% endif %}
+
+{% else %}
+
+<div style="text-align:center; padding:40px 20px; color:#888;">
+    <div style="font-size:48px; margin-bottom:12px;">🤔</div>
+    <div style="font-size:15px; font-weight:600;">
+        Resolve the ambiguous matches above first.
+    </div>
+    <div style="font-size:12px; margin-top:6px; color:#aaa;">
+        Once you confirm your choices, the full reconciliation
+        report will appear here.
+    </div>
+</div>
+
+{% endif %}
+
+{% endblock %}
+
+
+{% block extra_script %}
+<script>
+
+    function toggleAllRenames(masterCheckbox) {
+        document.querySelectorAll('.rename-checkbox').forEach(cb => {
+            if (!cb.disabled) cb.checked = masterCheckbox.checked;
+        });
+    }
+
+    function checkAllMdb() {
+        document.querySelectorAll('.mdb-save-checkbox').forEach(cb => {
+            cb.checked = true;
+        });
+    }
+
+    function uncheckAllMdb() {
+        document.querySelectorAll('.mdb-save-checkbox').forEach(cb => {
+            cb.checked = false;
+        });
+    }
+
+    function confirmRenames() {
+        const checked = document.querySelectorAll(
+            '.rename-checkbox:checked:not(:disabled)'
+        );
+        const mdbChecked = document.querySelectorAll(
+            '.mdb-save-checkbox:checked'
+        );
+
+        if (checked.length === 0 && mdbChecked.length === 0) {
+            alert("⚠️ Please select at least one company to rename or save to Master DB.");
+            return false;
+        }
+
+        let msg = "🔄 Apply " + checked.length + " name change(s)?\n\n" +
+                  "This will:\n" +
+                  "✓ Rename company in ALL transactions of this client\n" +
+                  "✓ Fill ISIN where currently empty\n";
+
+        if (mdbChecked.length > 0) {
+            msg += "✓ Save " + mdbChecked.length + " alias(es) to Master DB\n";
+        }
+
+        msg += "\nOther clients will NOT be affected.\n\nContinue?";
+
+        return confirm(msg);
+    }
+
+    function toggleAisDrill(rowId) {
+        const drillRow = document.getElementById("drill_" + rowId);
+        const chevron  = document.getElementById("chev_" + rowId);
+        if (!drillRow) return;
+
+        const isOpen = drillRow.classList.contains("open");
+
+        if (isOpen) {
+            drillRow.classList.remove("open");
+            if (chevron) chevron.classList.remove("open");
+        } else {
+            drillRow.classList.add("open");
+            if (chevron) chevron.classList.add("open");
+        }
+    }
+
+</script>
+{% endblock %}

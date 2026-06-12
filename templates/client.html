@@ -1,0 +1,2619 @@
+{% extends "base.html" %}
+{% set active_page = "client" %}
+
+{% block title %}{{ client[1] }} — Capital Gains AI{% endblock %}
+
+{% block extra_style %}
+<style>
+    .year-bar {
+        background: #e8eaf6;
+        border-radius: 8px;
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+    }
+
+    .year-bar select {
+        padding: 7px 12px;
+        border: 1.5px solid #c5cae9;
+        border-radius: 6px;
+        font-size: 13px;
+        background: white;
+        cursor: pointer;
+    }
+
+    .fmv-warning-banner {
+        background: linear-gradient(to right, #fff3e0, #ffe0b2);
+        border-left: 5px solid #ff9800;
+        border-radius: 8px;
+        padding: 16px 20px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+        box-shadow: 0 2px 8px rgba(255,152,0,0.15);
+    }
+
+    .banner-icon { font-size: 26px; flex-shrink: 0; }
+    .banner-content { flex: 1; min-width: 200px; }
+    .banner-title { font-size: 13px; font-weight: 700; color: #e65100; margin-bottom: 4px; }
+    .banner-text { font-size: 12px; color: #5d4037; line-height: 1.5; }
+    .banner-text strong {
+        color: #1a237e; background: rgba(255,255,255,0.7);
+        padding: 1px 5px; border-radius: 3px;
+    }
+    .banner-btn {
+        background: #ff9800; color: white; padding: 8px 16px;
+        border-radius: 6px; text-decoration: none;
+        font-size: 13px; font-weight: 600;
+    }
+    .banner-btn:hover { background: #f57c00; }
+
+    .client-layout {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: 20px;
+        align-items: start;
+    }
+
+    @media (max-width: 1100px) {
+        .client-layout { grid-template-columns: 1fr; }
+    }
+
+    .tx-table { font-size: 12px; }
+    .tx-table th { font-size: 10px; padding: 9px 12px; }
+    .tx-table td { padding: 9px 12px; }
+
+    .stt-cell {
+        background: #fff8e1;
+        color: #e65100;
+        font-weight: 600;
+    }
+
+    .calc-bar {
+        background: #e8eaf6; padding: 16px 20px;
+        display: flex; gap: 10px; flex-wrap: wrap;
+        align-items: center; border-top: 1px solid #c5cae9;
+    }
+
+    .fmv-item {
+        display: flex; justify-content: space-between;
+        align-items: center; padding: 8px 0;
+        border-bottom: 1px solid #f0f0f0; font-size: 13px;
+    }
+
+    .fmv-item:last-child { border-bottom: none; }
+
+    .section-divider {
+        font-size: 11px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: 0.5px;
+        padding-bottom: 6px; margin: 16px 0 10px;
+        border-bottom: 2px solid #f0f0f0; color: #666;
+    }
+
+    .type-hint {
+        font-size: 11px; color: #888; margin-top: 5px;
+        line-height: 1.5; display: none;
+        background: #f5f6fa; padding: 6px 10px;
+        border-radius: 5px; border-left: 3px solid #7986cb;
+    }
+
+    .stt-hint {
+        font-size: 10px; color: #e65100;
+        background: #fff8e1; padding: 6px 10px;
+        border-radius: 5px; border-left: 3px solid #ffa000;
+        margin-top: 5px; line-height: 1.4;
+    }
+
+    #fmv-section { scroll-margin-top: 20px; }
+
+    #fmv-section.highlight {
+        animation: highlightPulse 1.5s ease-out;
+    }
+
+    @keyframes highlightPulse {
+        0%   { box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+        30%  { box-shadow: 0 0 0 4px #ff9800,
+                           0 4px 16px rgba(255,152,0,0.4); }
+        100% { box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+    }
+
+    .autocomplete-wrap { position: relative; }
+
+    #autocomplete-box {
+        position: absolute; background: white;
+        border: 1.5px solid #1a237e; border-top: none;
+        border-radius: 0 0 6px 6px; max-height: 300px;
+        overflow-y: auto; z-index: 200; display: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        width: 100%; left: 0; top: 100%;
+    }
+
+    .autocomplete-section-label {
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 6px 12px;
+        background: #f5f6fa;
+        color: #888;
+        border-bottom: 1px solid #e0e0e0;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    .autocomplete-item {
+        padding: 8px 12px; cursor: pointer; font-size: 13px;
+        border-bottom: 1px solid #f0f0f0;
+        display: flex; justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .autocomplete-item:hover { background: #e8eaf6; }
+
+    .autocomplete-item .source-tag {
+        font-size: 9px;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 8px;
+        white-space: nowrap;
+    }
+
+    .source-tag.client {
+        background: #fff8e1;
+        color: #e65100;
+    }
+
+    .source-tag.master {
+        background: #e3f2fd;
+        color: #1565c0;
+    }
+
+    #similar-name-warning {
+        display: none; background: #fff3e0;
+        border-left: 4px solid #ff9800; border-radius: 6px;
+        padding: 10px 14px; margin-top: 8px;
+        font-size: 12px; color: #e65100; line-height: 1.6;
+    }
+
+    .tab-bar {
+        display: flex;
+        background: #f5f6fa;
+        border-bottom: 2px solid #e0e0e0;
+        border-radius: 10px 10px 0 0;
+        overflow: hidden;
+    }
+
+    .tab-btn {
+        flex: 1;
+        padding: 11px 4px;
+        font-size: 10px;
+        font-weight: 700;
+        text-align: center;
+        color: #888;
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        border-bottom: 3px solid transparent;
+        transition: all 0.15s;
+        white-space: nowrap;
+    }
+
+    .tab-btn:hover {
+        color: #1a237e;
+        background: rgba(26,35,126,0.04);
+    }
+
+    .tab-btn.active {
+        color: #1a237e;
+        border-bottom-color: #1a237e;
+        background: white;
+    }
+
+    .tab-panel {
+        display: none;
+        padding: 20px;
+    }
+
+    .tab-panel.active {
+        display: block;
+    }
+
+    .tab-icon {
+        display: block;
+        font-size: 15px;
+        margin-bottom: 2px;
+    }
+
+    .security-badge {
+        font-size: 12px;
+        font-weight: 600;
+        padding: 4px 12px;
+        border-radius: 12px;
+        white-space: nowrap;
+    }
+
+    .security-badge.locked {
+        background: #fff3e0;
+        color: #e65100;
+        border: 1px solid #ffcc80;
+    }
+
+    .security-badge.open {
+        background: #f5f5f5;
+        color: #888;
+        border: 1px solid #e0e0e0;
+    }
+
+    .modal-action-bar {
+        background: #f5f6fa;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .modal-action-bar .btn {
+        flex: 1;
+        justify-content: center;
+        min-width: 90px;
+    }
+
+    .loss-bar {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+        border-left: 4px solid #f44336;
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+
+    .loss-bar-header {
+        padding: 10px 16px;
+        background: linear-gradient(to right, #ffebee, #ffcdd2);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        user-select: none;
+        transition: background 0.15s;
+    }
+
+    .loss-bar-header:hover {
+        background: linear-gradient(to right, #ffcdd2, #ef9a9a);
+    }
+
+    .loss-bar-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .loss-bar-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: #c62828;
+    }
+
+    .loss-pill {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 10px;
+        border-radius: 10px;
+        background: #ffebee;
+        color: #c62828;
+        border: 1px solid #ffcdd2;
+    }
+
+    .loss-bar-right {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+
+    .loss-chevron {
+        font-size: 13px;
+        color: #c62828;
+        transition: transform 0.2s;
+        display: inline-block;
+    }
+
+    .loss-chevron.open {
+        transform: rotate(180deg);
+    }
+
+    .loss-bar-body {
+        display: none;
+        padding: 14px 18px;
+        border-top: 1px solid #ffcdd2;
+    }
+
+    .loss-bar-body.open {
+        display: block;
+    }
+
+    .loss-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #f5f5f5;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .loss-row:last-child { border-bottom: none; }
+
+    .loss-info { flex: 1; min-width: 200px; }
+
+    .loss-year-tag {
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 700;
+        color: #1a237e;
+        margin-right: 8px;
+    }
+
+    .loss-source-pill {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .loss-source-pill.manual {
+        background: #e3f2fd;
+        color: #0d47a1;
+    }
+
+    .loss-source-pill.auto {
+        background: #f3e5f5;
+        color: #4a148c;
+    }
+
+    .loss-amounts {
+        font-size: 13px;
+        color: #555;
+        margin-top: 6px;
+    }
+
+    .loss-amount-tag {
+        display: inline-block;
+        background: #ffebee;
+        color: #c62828;
+        padding: 3px 10px;
+        border-radius: 12px;
+        font-weight: 600;
+        margin-right: 6px;
+        font-size: 12px;
+    }
+
+    .loss-amount-tag.used {
+        background: #f5f5f5;
+        color: #888;
+        text-decoration: line-through;
+    }
+
+    .loss-meta { font-size: 11px; color: #888; margin-top: 4px; }
+
+    .loss-actions { display: flex; gap: 6px; }
+
+    .loss-totals {
+        background: #fff8e1;
+        border-radius: 8px;
+        padding: 10px 14px;
+        margin-top: 10px;
+        font-size: 12px;
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        justify-content: space-between;
+    }
+
+    .loss-totals strong { color: #c62828; }
+
+    .pdf-hint-box {
+        background: #e8f5e9;
+        border-left: 4px solid #2e7d32;
+        border-radius: 6px;
+        padding: 10px 12px;
+        margin-bottom: 14px;
+        font-size: 11px;
+        color: #1b5e20;
+        line-height: 1.5;
+    }
+
+    .pdf-hint-box .ok-badge {
+        display: inline-block;
+        background: #2e7d32;
+        color: white;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 8px;
+        margin-right: 4px;
+    }
+
+    .pdf-info-link {
+        display: inline-block;
+        color: #1976d2;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: underline;
+        margin-top: 6px;
+    }
+
+    .pdf-info-link:hover { color: #0d47a1; }
+
+    .compat-modal-box {
+        background: white;
+        border-radius: 14px;
+        padding: 28px 30px;
+        width: 100%;
+        max-width: 600px;
+        max-height: 85vh;
+        overflow-y: auto;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+        position: relative;
+    }
+
+    .compat-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 8px;
+    }
+
+    .compat-row.good    { background: #e8f5e9; border-left: 4px solid #2e7d32; }
+    .compat-row.partial { background: #fff8e1; border-left: 4px solid #f57c00; }
+    .compat-row.bad     { background: #ffebee; border-left: 4px solid #c62828; }
+
+    .compat-icon { font-size: 22px; flex-shrink: 0; line-height: 1; }
+    .compat-text { flex: 1; font-size: 13px; }
+    .compat-text strong { display: block; margin-bottom: 3px; }
+    .compat-text .desc { font-size: 11px; color: #666; line-height: 1.5; }
+    .compat-good    strong { color: #1b5e20; }
+    .compat-partial strong { color: #e65100; }
+    .compat-bad     strong { color: #b71c1c; }
+
+    .pan-warning-box {
+        background: #fff3e0;
+        border-left: 4px solid #ff9800;
+        border-radius: 6px;
+        padding: 10px 14px;
+        margin: 8px 0 14px;
+        font-size: 11px;
+        color: #5d4037;
+        line-height: 1.5;
+        display: none;
+    }
+
+    .pan-warning-box strong { color: #e65100; }
+
+    .field-locked-note {
+        font-size: 10px;
+        color: #999;
+        margin-top: 4px;
+        font-style: italic;
+    }
+
+    .recon-info-box {
+        background: #e3f2fd;
+        border-left: 4px solid #2196f3;
+        padding: 12px 14px;
+        border-radius: 6px;
+        margin-bottom: 14px;
+        font-size: 12px;
+        line-height: 1.6;
+        color: #0d47a1;
+    }
+
+    .recon-info-box ul { margin: 6px 0 0 18px; padding: 0; }
+    .recon-info-box li { margin: 2px 0; }
+
+    .recon-multi-box {
+        background: #fff3cd;
+        border-left: 4px solid #ffc107;
+        padding: 10px 12px;
+        border-radius: 6px;
+        margin-bottom: 14px;
+        font-size: 11px;
+        color: #5d4037;
+        line-height: 1.5;
+    }
+
+    .recon-file-input {
+        width: 100%;
+        padding: 10px;
+        border: 2px dashed #2196f3;
+        border-radius: 6px;
+        background: #f8fbff;
+        cursor: pointer;
+        font-size: 12px;
+    }
+
+    .recon-tech-box {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        padding: 10px 12px;
+        border-radius: 6px;
+        margin-top: 14px;
+        font-size: 11px;
+        color: #555;
+        line-height: 1.6;
+    }
+
+    .recon-method-btn {
+        flex: 1;
+        padding: 9px 6px;
+        font-size: 11px;
+        font-weight: 700;
+        border: none;
+        background: transparent;
+        color: #888;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+
+    .recon-method-btn:hover {
+        background: rgba(26,35,126,0.05);
+        color: #1a237e;
+    }
+
+    .recon-method-btn.active {
+        background: white;
+        color: #1a237e;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+{% set has_password = client[5] is not none %}
+
+    <div class="page-header">
+        <div class="breadcrumb">
+            <a href="{{ url_for('dashboard') }}">Dashboard</a> ›
+            {{ client[1] }}
+        </div>
+        <div class="page-header-row">
+            <h1 style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                {{ client[1] }}
+                {% if has_password %}
+                <span class="security-badge locked">🔒 Protected</span>
+                {% else %}
+                <span class="security-badge open">🔓 Open Access</span>
+                {% endif %}
+            </h1>
+            <div class="btn-row" style="margin-bottom:0;">
+                <button onclick="openEditDetailsModal()"
+                        class="btn btn-outline btn-sm">
+                    ✏️ Edit Details
+                </button>
+                <button onclick="openSecurityModal('{{ 'change' if has_password else 'set' }}')"
+                        class="btn btn-outline btn-sm">
+                    ⚙️ Security
+                </button>
+                
+                {% if transactions %}
+                <a href="{{ url_for('calculate', client_id=client[0], fin_year=fin_year) }}"
+                class="btn btn-primary">⚖️ Calculate</a>
+                <a href="{{ url_for('closing_stock_page', client_id=client[0], fin_year=fin_year) }}"
+                class="btn btn-teal">📦 Closing Stock</a>
+                            <button onclick="openReconcileChoiceModal()"
+                        class="btn btn-orange">🔍 Reconcile</button>
+                {% endif %}
+            </div>
+        </div>
+        <div class="text-muted mt-4">
+            PAN: {{ client[2] }}
+            {% if client[3] %} · {{ client[3] }} {% endif %}
+            {% if client[4] %} · {{ client[4] }} {% endif %}
+        </div>
+    </div>
+
+    <div class="year-bar">
+        <label style="font-size:13px; font-weight:600; color:#333;">
+            Financial Year:
+        </label>
+        <select onchange="window.location.href=
+            '{{ url_for('client_page', client_id=client[0]) }}?fin_year='
+            + this.value">
+            {% for yr in all_years %}
+            <option value="{{ yr }}" {{ 'selected' if yr == fin_year }}>
+                FY {{ yr }}
+            </option>
+            {% endfor %}
+        </select>
+        <span class="text-muted">
+            {{ transactions | length }} transaction(s) in FY {{ fin_year }}
+        </span>
+    </div>
+
+{% set ns = namespace(total_stcl_avail=0, total_ltcl_avail=0) %}
+{% for loss in all_losses %}
+    {% set ns.total_stcl_avail = ns.total_stcl_avail + ((loss[2] or 0) - (loss[4] or 0)) %}
+    {% set ns.total_ltcl_avail = ns.total_ltcl_avail + ((loss[3] or 0) - (loss[5] or 0)) %}
+{% endfor %}
+
+<div class="loss-bar">
+    <div class="loss-bar-header" onclick="toggleLossBar()">
+        <div class="loss-bar-left">
+            <span class="loss-bar-title">
+                📉 B/F Losses
+                {% if all_losses %}
+                <span style="font-size:11px; font-weight:400;
+                             color:#888; margin-left:4px;">
+                    ({{ all_losses|length }})
+                </span>
+                {% endif %}
+            </span>
+
+            {% if all_losses %}
+                {% if ns.total_stcl_avail > 0 %}
+                <span class="loss-pill">
+                    STCL ₹{{ "{:,.0f}".format(ns.total_stcl_avail) }}
+                </span>
+                {% endif %}
+                {% if ns.total_ltcl_avail > 0 %}
+                <span class="loss-pill">
+                    LTCL ₹{{ "{:,.0f}".format(ns.total_ltcl_avail) }}
+                </span>
+                {% endif %}
+            {% else %}
+                <span style="font-size:11px; color:#aaa;">
+                    No losses recorded
+                </span>
+            {% endif %}
+        </div>
+
+        <div class="loss-bar-right">
+            <button onclick="event.stopPropagation(); openLossModal('add')"
+                    class="btn btn-danger btn-sm"
+                    style="padding:4px 10px; font-size:11px;">
+                ➕ Add
+            </button>
+            <span class="loss-chevron" id="lossChevron">▼</span>
+        </div>
+    </div>
+
+    <div class="loss-bar-body" id="lossBarBody">
+
+        {% if all_losses %}
+
+            {% set ns2 = namespace(total_stcl=0, total_ltcl=0,
+                                   total_stcl_avail=0, total_ltcl_avail=0) %}
+
+            {% for loss in all_losses %}
+                {% set loss_id    = loss[0] %}
+                {% set loss_year  = loss[1] %}
+                {% set stcl       = loss[2] or 0 %}
+                {% set ltcl       = loss[3] or 0 %}
+                {% set stcl_used  = loss[4] or 0 %}
+                {% set ltcl_used  = loss[5] or 0 %}
+                {% set source     = loss[6] %}
+                {% set notes      = loss[7] %}
+                {% set stcl_avail = stcl - stcl_used %}
+                {% set ltcl_avail = ltcl - ltcl_used %}
+
+                {% set ns2.total_stcl       = ns2.total_stcl + stcl %}
+                {% set ns2.total_ltcl       = ns2.total_ltcl + ltcl %}
+                {% set ns2.total_stcl_avail = ns2.total_stcl_avail + stcl_avail %}
+                {% set ns2.total_ltcl_avail = ns2.total_ltcl_avail + ltcl_avail %}
+
+                <div class="loss-row">
+                    <div class="loss-info">
+                        <span class="loss-year-tag">FY {{ loss_year }}</span>
+                        <span class="loss-source-pill {{ source }}">{{ source }}</span>
+
+                        <div class="loss-amounts">
+                            {% if stcl > 0 %}
+                            <span class="loss-amount-tag
+                                {{ 'used' if stcl_avail <= 0 else '' }}">
+                                STCL: ₹{{ "{:,.0f}".format(stcl) }}
+                                {% if stcl_used > 0 %}
+                                (used ₹{{ "{:,.0f}".format(stcl_used) }})
+                                {% endif %}
+                            </span>
+                            {% endif %}
+
+                            {% if ltcl > 0 %}
+                            <span class="loss-amount-tag
+                                {{ 'used' if ltcl_avail <= 0 else '' }}">
+                                LTCL: ₹{{ "{:,.0f}".format(ltcl) }}
+                                {% if ltcl_used > 0 %}
+                                (used ₹{{ "{:,.0f}".format(ltcl_used) }})
+                                {% endif %}
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        {% if notes %}
+                        <div class="loss-meta">📝 {{ notes }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="loss-actions">
+                        <button onclick="openLossModal('edit',
+                                    {{ loss_id }}, '{{ loss_year }}',
+                                    {{ stcl }}, {{ ltcl }},
+                                    '{{ notes|replace("'","")|replace('"','') }}')"
+                                class="btn btn-sm"
+                                style="background:#1976d2; color:white;">
+                            ✏️
+                        </button>
+                        <a href="{{ url_for('delete_loss_route',
+                                   loss_id=loss_id,
+                                   client_id=client[0],
+                                   fin_year=fin_year) }}"
+                           class="btn btn-danger btn-sm"
+                           onclick="return confirm(
+                               'Delete loss entry for FY {{ loss_year }}?')">
+                            🗑️
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+
+            <div class="loss-totals">
+                <div>
+                    <strong>STCL Available:</strong>
+                    ₹{{ "{:,.0f}".format(ns2.total_stcl_avail) }}
+                    <span style="color:#888; font-size:11px;">
+                        / ₹{{ "{:,.0f}".format(ns2.total_stcl) }}
+                    </span>
+                </div>
+                <div>
+                    <strong>LTCL Available:</strong>
+                    ₹{{ "{:,.0f}".format(ns2.total_ltcl_avail) }}
+                    <span style="color:#888; font-size:11px;">
+                        / ₹{{ "{:,.0f}".format(ns2.total_ltcl) }}
+                    </span>
+                </div>
+            </div>
+
+        {% else %}
+
+            <div style="text-align:center; padding:16px 0; color:#888;">
+                <div style="font-size:28px; margin-bottom:6px;">📭</div>
+                <div style="font-size:13px;">
+                    No carry-forward losses recorded yet.
+                </div>
+                <div style="font-size:11px; color:#aaa; margin-top:4px;">
+                    Losses from calculations auto-save here. You can also
+                    manually add losses from previous years.
+                </div>
+            </div>
+
+        {% endif %}
+
+    </div>
+</div>
+
+{% if missing_fmv %}
+<div class="fmv-warning-banner">
+    <div class="banner-icon">⚠️</div>
+    <div class="banner-content">
+        <div class="banner-title">
+            FMV Required for {{ missing_fmv | length }}
+            Compan{{ 'y' if missing_fmv | length == 1 else 'ies' }}
+        </div>
+        <div class="banner-text">
+            Pre-2018 shares being sold — FMV needed for Sec 112A:
+            {% for m in missing_fmv %}
+                <strong>{{ m.company }}</strong>
+                {%- if not loop.last %}, {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    <a href="#fmv-section" class="banner-btn"
+       onclick="highlightFmv(); switchTab('fmv');">
+        Add FMV →
+    </a>
+</div>
+{% endif %}
+
+<div class="client-layout">
+
+    <div>
+        <div class="card">
+            <div class="card-header blue">
+                <span>📋 Transactions — FY {{ fin_year }}</span>
+                <span style="font-size:12px; font-weight:400; opacity:0.8;">
+                    {{ transactions | length }} records
+                </span>
+            </div>
+
+            {% if transactions %}
+            <div class="table-wrap">
+                <table class="tx-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Company</th>
+                            <th>ISIN</th>
+                            <th>Qty</th>
+                            <th>Amount (₹)</th>
+                            <th>Buy Exp</th>
+                            <th>Sell Exp</th>
+                            <th>STT (₹)</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tx in transactions %}
+                        <tr>
+                            <td>{{ tx[1] }}</td>
+                            <td>
+                                {% if tx[2] == 'BUY' %}
+                                    <span class="badge badge-buy">BUY</span>
+                                {% elif tx[2] == 'SELL' %}
+                                    <span class="badge badge-sell">SELL</span>
+                                {% elif tx[2] == 'BUYBACK' %}
+                                    <span class="badge badge-buyback">↩ BUYBACK</span>
+                                {% elif tx[2] == 'BONUS' %}
+                                    <span class="badge badge-bonus">🎁 BONUS</span>
+                                {% elif tx[2] == 'SPLIT' %}
+                                    <span class="badge badge-split">✂️ SPLIT</span>
+                                {% elif tx[2] == 'GIFT' %}
+                                    <span class="badge badge-gift">🎁 GIFT</span>
+                                {% elif tx[2] == 'INHERIT' %}
+                                    <span class="badge badge-inherit">🏛️ INHERIT</span>
+                                {% else %}
+                                    <span class="badge">{{ tx[2] }}</span>
+                                {% endif %}
+                            </td>
+                            <td><strong>{{ tx[3] }}</strong></td>
+                            <td style="font-size:11px; color:#aaa;
+                                       font-family:monospace;">
+                                {{ tx[4] if tx[4] else '—' }}
+                            </td>
+                            <td>{{ tx[5] }}</td>
+                            <td>{{ "{:,.2f}".format(tx[6]) }}</td>
+                            <td style="color:#888;">
+                                {{ "{:,.2f}".format(tx[7]) if tx[7] else '—' }}
+                            </td>
+                            <td style="color:#888;">
+                                {{ "{:,.2f}".format(tx[8]) if tx[8] else '—' }}
+                            </td>
+                            <td class="{{ 'stt-cell' if tx[9] and tx[9] > 0 else '' }}">
+                                {% if tx[9] and tx[9] > 0 %}
+                                    ₹{{ "{:,.2f}".format(tx[9]) }}
+                                {% else %}
+                                    <span style="color:#ccc;">₹0</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="flex gap-8">
+                                    <a href="{{ url_for('edit_transaction_route',
+                                               tx_id=tx[0]) }}"
+                                       class="btn btn-sm"
+                                       style="background:#1976d2; color:white;">
+                                        ✏️
+                                    </a>
+                                    <a href="{{ url_for('delete_transaction_route',
+                                               tx_id=tx[0],
+                                               client_id=client[0],
+                                               fin_year=fin_year) }}"
+                                       class="btn btn-danger btn-sm"
+                                       onclick="return confirm(
+                                           'Delete this transaction?')">
+                                        🗑️
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="calc-bar">
+                <a href="{{ url_for('calculate',
+                           client_id=client[0], fin_year=fin_year) }}"
+                   class="btn btn-primary">
+                    ⚖️ Calculate Capital Gains
+                </a>
+                <a href="{{ url_for('closing_stock_page',
+                           client_id=client[0], fin_year=fin_year) }}"
+                   class="btn btn-teal">
+                    📦 Closing Stock
+                </a>
+            </div>
+
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">📋</div>
+                <h3>No transactions yet</h3>
+                <p>Use the panel on the right to add transactions.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div>
+        <div class="card" id="right-panel">
+
+            <div class="tab-bar">
+                <button class="tab-btn active"
+                        onclick="switchTab('add')"
+                        id="tab-btn-add">
+                    <span class="tab-icon">➕</span>Add
+                </button>
+                <button class="tab-btn"
+                        onclick="switchTab('excel')"
+                        id="tab-btn-excel">
+                    <span class="tab-icon">📊</span>Excel
+                </button>
+                <button class="tab-btn"
+                        onclick="switchTab('pdf')"
+                        id="tab-btn-pdf">
+                    <span class="tab-icon">🤖</span>AI PDF
+                </button>
+                <button class="tab-btn"
+                        onclick="switchTab('fmv')"
+                        id="tab-btn-fmv">
+                    <span class="tab-icon">📅</span>FMV
+                </button>
+                
+            </div>
+
+            <div class="tab-panel active" id="panel-add">
+                <form method="POST"
+                      action="{{ url_for('add_transaction_route',
+                                 client_id=client[0]) }}">
+
+                    <input type="hidden" name="fin_year" value="{{ fin_year }}">
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Date *</label>
+                            <input class="form-control" type="date"
+                                   name="date" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Type *</label>
+                            <select class="form-control" name="type"
+                                    id="txTypeSelect"
+                                    onchange="showTypeHint(this.value)"
+                                    required>
+                                <optgroup label="Normal">
+                                    <option value="BUY">BUY</option>
+                                    <option value="SELL">SELL</option>
+                                    <option value="BUYBACK">BUYBACK</option>
+                                    <option value="BONUS">🎁 BONUS</option>
+                                </optgroup>
+                                <optgroup label="Corporate Action">
+                                    <option value="SPLIT">✂️ SPLIT</option>
+                                </optgroup>
+                                <optgroup label="Transfer">
+                                    <option value="GIFT">🎁 GIFT</option>
+                                    <option value="INHERIT">🏛️ INHERIT</option>
+                                </optgroup>
+                            </select>
+                            <div class="type-hint" id="typeHint"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-group autocomplete-wrap">
+                        <label class="form-label">Company Name *</label>
+                        <input class="form-control" type="text"
+                               name="company"
+                               id="companyInput"
+                               placeholder="e.g. RELIANCE"
+                               style="text-transform:uppercase;"
+                               autocomplete="off"
+                               required>
+                        <div id="autocomplete-box"></div>
+                        <div id="similar-name-warning"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">ISIN (optional)</label>
+                        <input class="form-control" type="text"
+                               name="isin"
+                               placeholder="e.g. INE002A01018">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Quantity *</label>
+                            <input class="form-control" type="number"
+                                   name="quantity" min="1"
+                                   id="qtyInput" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" id="amountLabel">
+                                Total Amount (₹) *
+                            </label>
+                            <input class="form-control" type="number"
+                                   name="amount" step="0.01" min="0"
+                                   placeholder="Total, not per share"
+                                   id="amountInput" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Buy Expenses (₹)</label>
+                            <input class="form-control" type="number"
+                                   name="buy_expenses"
+                                   step="0.01" min="0" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Sell Expenses (₹)</label>
+                            <input class="form-control" type="number"
+                                   name="sell_expenses"
+                                   step="0.01" min="0" value="0">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            STT — Securities Transaction Tax (₹)
+                        </label>
+                        <input class="form-control" type="number"
+                               name="stt" step="0.01" min="0" value="0"
+                               placeholder="0 if not applicable"
+                               id="sttInput">
+                        <div class="stt-hint">
+                            ℹ️ STT is INFORMATIONAL only — Section 40(a)(ib)
+                            says STT is NOT deductible from capital gains.
+                            Stored for your records.
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Notes</label>
+                        <input class="form-control" type="text"
+                               name="notes" placeholder="Optional">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-full">
+                        ➕ Add Transaction
+                    </button>
+                </form>
+            </div>
+
+            <div class="tab-panel" id="panel-excel">
+                <p class="text-muted mb-16">
+                    Download the template, fill it, then upload to import
+                    many transactions at once.
+                </p>
+
+                <a href="{{ url_for('download_template') }}"
+                   class="btn btn-outline-green btn-full"
+                   style="margin-bottom:14px;">
+                    ⬇️ Download Excel Template
+                </a>
+
+                <form method="POST"
+                      action="{{ url_for('import_excel', client_id=client[0]) }}"
+                      enctype="multipart/form-data">
+                    <input type="hidden" name="fin_year" value="{{ fin_year }}">
+                    <div class="form-group">
+                        <label class="form-label">Upload Filled Excel</label>
+                        <input class="form-control" type="file"
+                               name="excel_file"
+                               accept=".xlsx,.xls" required>
+                    </div>
+                    <button type="submit" class="btn btn-success btn-full">
+                        ⬆️ Import Transactions
+                    </button>
+                </form>
+
+                <div class="text-muted mt-8">
+                    ⚠️ You will review before saving · FY {{ fin_year }}
+                    <br>📌 Template now includes STT column
+                </div>
+            </div>
+
+            <div class="tab-panel" id="panel-pdf">
+                <p class="text-muted mb-16">
+                    Upload a broker PDF (Zerodha, Groww, ICICI, etc.).
+                    AI extracts all transactions automatically — including STT.
+                </p>
+
+                <div class="pdf-hint-box">
+                    <span class="ok-badge">✅ BEST</span>
+                    Works best for <strong>daily contract notes</strong>
+                    with a clear "Net Amount Payable" total.
+                    <br>
+                    <span class="pdf-info-link"
+                          onclick="openCompatModal()">
+                        ℹ️ See what PDFs work / don't work →
+                    </span>
+                </div>
+
+                <form method="POST"
+                      action="{{ url_for('upload_pdf', client_id=client[0]) }}"
+                      enctype="multipart/form-data"
+                      id="pdfForm">
+                    <input type="hidden" name="fin_year" value="{{ fin_year }}">
+                    <div class="form-group">
+                        <label class="form-label">Upload PDF Statement</label>
+                        <input class="form-control" type="file"
+                               name="pdf_file" accept=".pdf" required>
+                    </div>
+                    <button type="submit"
+                            class="btn btn-purple btn-full"
+                            id="pdfBtn">
+                        🤖 Extract with AI
+                    </button>
+                </form>
+
+                <div class="text-muted mt-8">
+                    ⚠️ Takes 10–20 seconds. You review before saving.
+                </div>
+            </div>
+
+            <div class="tab-panel" id="panel-fmv">
+                <p class="text-muted mb-16">
+                    Required ONLY for shares bought
+                    <strong>before 31-Jan-2018</strong> (Sec 112A).
+                </p>
+
+                <div style="background:#f3e5f5; border:1.5px solid #ce93d8;
+                            border-radius:8px; padding:12px;
+                            margin-bottom:14px;">
+                    <div style="font-size:10px; font-weight:700;
+                                color:#4a148c; text-transform:uppercase;
+                                letter-spacing:0.4px; margin-bottom:8px;">
+                        📚 FMV Reference Files
+                    </div>
+                    <a href="{{ url_for('download_fmv_reference',
+                               exchange='nse') }}"
+                       class="btn btn-full btn-sm"
+                       style="background:white; color:#1a237e;
+                              border:1.5px solid #1a237e;
+                              margin-bottom:6px; justify-content:center;">
+                        📊 NSE FMV (31-Jan-2018)
+                    </a>
+                    <a href="{{ url_for('download_fmv_reference',
+                               exchange='bse') }}"
+                       class="btn btn-full btn-sm"
+                       style="background:white; color:#1a237e;
+                              border:1.5px solid #1a237e;
+                              justify-content:center;">
+                        📊 BSE FMV (31-Jan-2018)
+                    </a>
+                </div>
+
+                <details style="background:#fff8e1;
+                                border-left:4px solid #ffa000;
+                                border-radius:6px; margin-bottom:14px;">
+                    <summary style="cursor:pointer; padding:10px 12px;
+                                    font-size:11px; font-weight:700;
+                                    color:#e65100; text-transform:uppercase;
+                                    letter-spacing:0.3px;
+                                    user-select:none;">
+                        📜 FMV Adjustment Rules (click to expand)
+                    </summary>
+                    <div style="padding:0 12px 12px; font-size:11px;
+                                color:#5d4037; line-height:1.7;">
+                        <strong style="color:#bf360c;">1. Base FMV:</strong>
+                        Highest price on 31-Jan-2018 (NSE vs BSE —
+                        higher one).<br>
+                        <strong style="color:#bf360c;">
+                            2. Split after 2018:</strong>
+                        FMV ÷ Split Ratio<br>
+                        <strong style="color:#bf360c;">
+                            3. Bonus after 2018:</strong>
+                        Original FMV unchanged. Bonus = NIL cost.<br>
+                        <strong style="color:#bf360c;">
+                            4. Rights after 2018:</strong>
+                        Original FMV unchanged. Rights = price paid.<br>
+                        <strong style="color:#bf360c;">5. Merger:</strong>
+                        FMV × (given ÷ received)<br>
+                        <strong style="color:#bf360c;">6. Demerger:</strong>
+                        Apportion per NCLT scheme.<br>
+                        <strong style="color:#bf360c;">
+                            7. Multiple actions:</strong>
+                        Apply chronologically.
+                    </div>
+                </details>
+
+                <div class="section-divider">➕ Add Single FMV</div>
+
+                <form method="POST"
+                      action="{{ url_for('save_fmv_route',
+                                 client_id=client[0]) }}">
+                    <input type="hidden" name="fin_year" value="{{ fin_year }}">
+                    <div class="form-group">
+                        <label class="form-label">Company</label>
+                        <input class="form-control" type="text"
+                               name="fmv_company"
+                               placeholder="e.g. RELIANCE"
+                               style="text-transform:uppercase;">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">
+                            FMV on 31-Jan-2018 (₹)
+                        </label>
+                        <input class="form-control" type="number"
+                               name="fmv_value" step="0.01" min="0.01"
+                               placeholder="e.g. 850.50">
+                    </div>
+                    <button type="submit"
+                            class="btn btn-primary btn-full">
+                        💾 Save FMV
+                    </button>
+                </form>
+
+                <div class="section-divider" style="margin-top:18px;">
+                    📊 Bulk Upload
+                </div>
+
+                <a href="{{ url_for('download_fmv_template') }}"
+                   class="btn btn-full btn-sm"
+                   style="background:#f3e5f5; color:#6a1b9a;
+                          border:2px solid #ce93d8;
+                          margin-bottom:8px; justify-content:center;">
+                    ⬇️ FMV Excel Template
+                </a>
+
+                <form method="POST"
+                      action="{{ url_for('import_fmv', client_id=client[0]) }}"
+                      enctype="multipart/form-data">
+                    <input type="hidden" name="fin_year" value="{{ fin_year }}">
+                    <div class="form-group">
+                        <label class="form-label">Upload FMV Excel</label>
+                        <input class="form-control" type="file"
+                               name="fmv_file"
+                               accept=".xlsx,.xls" required>
+                    </div>
+                    <button type="submit" class="btn btn-full"
+                            style="background:#6a1b9a; color:white;">
+                        ⬆️ Import FMV
+                    </button>
+                </form>
+
+                {% if fmv_list %}
+                <div class="section-divider" style="margin-top:18px;">
+                    ✅ Saved FMV ({{ fmv_list | length }})
+                </div>
+                {% for company, fmv in fmv_list %}
+                <div class="fmv-item">
+                    <span>
+                        <strong>{{ company }}</strong>
+                        — ₹{{ "%.2f" | format(fmv) }}
+                    </span>
+                    <a href="{{ url_for('delete_fmv_route',
+                               client_id=client[0],
+                               company=company,
+                               fin_year=fin_year) }}"
+                       class="btn btn-danger btn-sm"
+                       onclick="return confirm(
+                           'Remove FMV for {{ company }}?')">
+                        ✕
+                    </a>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="text-muted"
+                     style="text-align:center; padding:12px 0;">
+                    No FMV entries saved yet.
+                </div>
+                {% endif %}
+            </div>
+
+        </div>
+
+        <div id="fmv-section"></div>
+    </div>
+
+</div>
+
+<div class="modal-overlay" id="editDetailsModal"
+     style="display:none; position:fixed; top:0; left:0;
+            width:100%; height:100%; background:rgba(0,0,0,0.5);
+            z-index:1000; justify-content:center; align-items:center;">
+
+    <div style="background:white; border-radius:14px; padding:32px;
+                width:100%; max-width:480px;
+                box-shadow:0 8px 32px rgba(0,0,0,0.2);
+                position:relative;">
+
+        <button onclick="closeEditDetailsModal()"
+                style="position:absolute; top:14px; right:18px;
+                       font-size:20px; cursor:pointer; color:#999;
+                       background:none; border:none;">✕</button>
+
+        <div style="font-size:18px; font-weight:700;
+                    color:#1a237e; margin-bottom:6px;">
+            ✏️ Edit Client Details
+        </div>
+        <div style="font-size:13px; color:#888; margin-bottom:20px;">
+            Update the client's name, PAN, email or phone.
+            <br>
+            <span style="color:#999; font-size:11px;">
+                For password changes, use the ⚙️ Security button instead.
+            </span>
+        </div>
+
+        <form method="POST"
+              action="{{ url_for('edit_client_details_route',
+                         client_id=client[0]) }}"
+              id="editDetailsForm"
+              onsubmit="return confirmDetailsSubmit()">
+
+            <input type="hidden" name="fin_year" value="{{ fin_year }}">
+
+            <div class="form-group">
+                <label class="form-label">Name *</label>
+                <input class="form-control" type="text"
+                       name="name" id="editName"
+                       value="{{ client[1] }}" required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">PAN *</label>
+                <input class="form-control" type="text"
+                       name="pan" id="editPan"
+                       value="{{ client[2] }}" maxlength="10"
+                       style="text-transform:uppercase;"
+                       autocomplete="off" required>
+                <div class="field-locked-note">
+                    ⚠️ Editing PAN is a sensitive change.
+                    Will ask for confirmation.
+                </div>
+            </div>
+
+            <div class="pan-warning-box" id="panWarningBox">
+                ⚠️ <strong>You're changing the PAN!</strong><br>
+                Original: <strong>{{ client[2] }}</strong>
+                → New: <strong><span id="panPreview"></span></strong>
+                <br>
+                <span style="color:#999; font-size:10px;">
+                    Make sure this is intentional. Transactions will stay
+                    linked to this client.
+                </span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Email</label>
+                <input class="form-control" type="email"
+                       name="email" id="editEmail"
+                       value="{{ client[3] or '' }}"
+                       placeholder="Optional" autocomplete="off">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Phone</label>
+                <input class="form-control" type="text"
+                       name="phone" id="editPhone"
+                       value="{{ client[4] or '' }}"
+                       placeholder="Optional" autocomplete="off">
+            </div>
+
+            <div class="btn-row" style="margin-bottom:0;">
+                <button type="submit" class="btn btn-primary"
+                        style="flex:1;">
+                    💾 Save Changes
+                </button>
+                <button type="button" class="btn btn-outline"
+                        onclick="closeEditDetailsModal()">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="securityModal"
+     style="display:none; position:fixed; top:0; left:0;
+            width:100%; height:100%; background:rgba(0,0,0,0.5);
+            z-index:1000; justify-content:center; align-items:center;">
+
+    <div style="background:white; border-radius:14px; padding:32px;
+                width:100%; max-width:440px;
+                box-shadow:0 8px 32px rgba(0,0,0,0.2);
+                position:relative;">
+
+        <button onclick="closeSecurityModal()"
+                style="position:absolute; top:14px; right:18px;
+                       font-size:20px; cursor:pointer; color:#999;
+                       background:none; border:none;">✕</button>
+
+        <div id="modalHeading"
+             style="font-size:18px; font-weight:700;
+                    color:#1a237e; margin-bottom:6px;">
+            ⚙️ Security
+        </div>
+        <div id="modalDescription"
+             style="font-size:13px; color:#888; margin-bottom:20px;">
+            Manage password for this client.
+        </div>
+
+        {% if has_password %}
+        <div class="modal-action-bar">
+            <button type="button" class="btn btn-sm btn-primary"
+                    onclick="switchModalAction('change')">
+                🔑 Change
+            </button>
+            <button type="button" class="btn btn-danger btn-sm"
+                    onclick="switchModalAction('remove')">
+                🔓 Remove
+            </button>
+            <a href="{{ url_for('lock_client',
+                       client_id=client[0], fin_year=fin_year) }}"
+               class="btn btn-orange btn-sm">
+                🔒 Lock Now
+            </a>
+        </div>
+        {% endif %}
+
+        <form method="POST"
+              action="{{ url_for('set_password_route',
+                         client_id=client[0]) }}"
+              id="securityForm">
+
+            <input type="hidden" name="fin_year" value="{{ fin_year }}">
+            <input type="hidden" name="action" id="modalAction" value="set">
+
+            <div id="passwordFields">
+                <div class="form-group">
+                    <label class="form-label">New Password</label>
+                    <input class="form-control" type="password"
+                           name="new_password" id="newPwdInput"
+                           placeholder="Minimum 4 characters"
+                           autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Confirm Password</label>
+                    <input class="form-control" type="password"
+                           name="confirm_new_password" id="confirmPwdInput"
+                           placeholder="Repeat password"
+                           autocomplete="new-password">
+                </div>
+            </div>
+
+            <div id="removeConfirm"
+                 style="display:none; padding:14px;
+                        background:#ffebee;
+                        border-left:4px solid #c62828;
+                        border-radius:6px; margin-bottom:16px;
+                        font-size:13px; color:#c62828;">
+                ⚠️ Are you sure you want to remove the password?<br>
+                Anyone with dashboard access will be able to open
+                this client.
+            </div>
+
+            <div class="btn-row" style="margin-bottom:0;">
+                <button type="submit" class="btn btn-primary"
+                        style="flex:1;" id="modalSubmitBtn">
+                    💾 Save
+                </button>
+                <button type="button" class="btn btn-outline"
+                        onclick="closeSecurityModal()">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="lossModal"
+     style="display:none; position:fixed; top:0; left:0;
+            width:100%; height:100%; background:rgba(0,0,0,0.5);
+            z-index:1000; justify-content:center; align-items:center;">
+
+    <div style="background:white; border-radius:14px; padding:32px;
+                width:100%; max-width:460px;
+                box-shadow:0 8px 32px rgba(0,0,0,0.2);
+                position:relative;">
+
+        <button onclick="closeLossModal()"
+                style="position:absolute; top:14px; right:18px;
+                       font-size:20px; cursor:pointer; color:#999;
+                       background:none; border:none;">✕</button>
+
+        <div id="lossModalHeading"
+             style="font-size:18px; font-weight:700;
+                    color:#c62828; margin-bottom:6px;">
+            📉 Add Old Loss
+        </div>
+        <div id="lossModalDescription"
+             style="font-size:13px; color:#888; margin-bottom:20px;">
+            Enter losses from previous years (before app usage).
+            They will auto-apply in future calculations.
+        </div>
+
+        <form method="POST" id="lossForm" action="">
+            <input type="hidden" name="fin_year" value="{{ fin_year }}">
+
+            <div class="form-group">
+                <label class="form-label">Loss Year (FY) *</label>
+                <input class="form-control" type="text"
+                       name="loss_year" id="lossYearInput"
+                       placeholder="e.g. 2020-21" required>
+                <div class="text-muted mt-4">
+                    Format: YYYY-YY (e.g. 2020-21)
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">STCL (₹)</label>
+                    <input class="form-control" type="number"
+                           name="stcl" id="stclInput"
+                           step="0.01" min="0" value="0"
+                           placeholder="Short-term loss">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">LTCL (₹)</label>
+                    <input class="form-control" type="number"
+                           name="ltcl" id="ltclInput"
+                           step="0.01" min="0" value="0"
+                           placeholder="Long-term loss">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Notes (optional)</label>
+                <input class="form-control" type="text"
+                       name="notes" id="lossNotesInput"
+                       placeholder="e.g. From ITR 2020-21">
+            </div>
+
+            <div style="background:#fff8e1; padding:10px 14px;
+                        border-left:4px solid #ffa000;
+                        border-radius:6px; font-size:11px;
+                        color:#5d4037; margin-bottom:16px;">
+                ℹ️ Losses expire after 8 Assessment Years.
+                Only enter losses you can still legally carry forward.
+            </div>
+
+            <div class="btn-row" style="margin-bottom:0;">
+                <button type="submit" class="btn btn-danger"
+                        style="flex:1;" id="lossSubmitBtn">
+                    💾 Save Loss
+                </button>
+                <button type="button" class="btn btn-outline"
+                        onclick="closeLossModal()">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="reconcileChoiceModal"
+     style="display:none; position:fixed; top:0; left:0;
+            width:100%; height:100%; background:rgba(0,0,0,0.5);
+            z-index:1000; justify-content:center; align-items:center;">
+
+    <div style="background:white; border-radius:14px; padding:28px 32px;
+                width:100%; max-width:560px;
+                box-shadow:0 8px 32px rgba(0,0,0,0.2);
+                position:relative;">
+
+        <button onclick="closeReconcileChoiceModal()"
+                style="position:absolute; top:14px; right:18px;
+                       font-size:20px; cursor:pointer; color:#999;
+                       background:none; border:none;">✕</button>
+
+        <div style="font-size:18px; font-weight:700;
+                    color:#1a237e; margin-bottom:6px;">
+            🔍 Reconciliation Tool
+        </div>
+        <div style="font-size:13px; color:#888; margin-bottom:22px;">
+            Choose what you want to reconcile against the app's data.
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr;
+                    gap:14px;">
+
+            <div onclick="chooseDpReconcile()"
+                 style="border:2px solid #ff9800; border-radius:10px;
+                        padding:20px; cursor:pointer;
+                        transition:all 0.15s; background:#fff8e1;
+                        text-align:center;"
+                 onmouseover="this.style.background='#ffe0b2';
+                              this.style.transform='translateY(-2px)';
+                              this.style.boxShadow='0 4px 12px rgba(255,152,0,0.3)';"
+                 onmouseout="this.style.background='#fff8e1';
+                             this.style.transform='translateY(0)';
+                             this.style.boxShadow='none';">
+
+                <div style="font-size:40px; margin-bottom:8px;">📄</div>
+                <div style="font-size:15px; font-weight:700;
+                            color:#e65100; margin-bottom:6px;">
+                    DP Statement
+                </div>
+                <div style="font-size:11px; color:#5d4037;
+                            line-height:1.5;">
+                    Compare with broker / DP <strong>holdings</strong>
+                    (NSDL / CDSL).
+                </div>
+            </div>
+
+            <div onclick="chooseAisReconcile()"
+                 style="border:2px solid #1976d2; border-radius:10px;
+                        padding:20px; cursor:pointer;
+                        transition:all 0.15s; background:#e3f2fd;
+                        text-align:center;"
+                 onmouseover="this.style.background='#bbdefb';
+                              this.style.transform='translateY(-2px)';
+                              this.style.boxShadow='0 4px 12px rgba(25,118,210,0.3)';"
+                 onmouseout="this.style.background='#e3f2fd';
+                             this.style.transform='translateY(0)';
+                             this.style.boxShadow='none';">
+
+                <div style="font-size:40px; margin-bottom:8px;">📊</div>
+                <div style="font-size:15px; font-weight:700;
+                            color:#0d47a1; margin-bottom:6px;">
+                    AIS Statement
+                </div>
+                <div style="font-size:11px; color:#0d47a1;
+                            line-height:1.5;">
+                    Compare with Income Tax <strong>AIS</strong>
+                    (transactions reported to ITD).
+                </div>
+            </div>
+
+        </div>
+
+        <div style="background:#f5f5f5; border-radius:8px;
+                    padding:10px 14px; margin-top:18px;
+                    font-size:11px; color:#666; line-height:1.6;">
+            <strong>💡 What's the difference?</strong><br>
+            • <strong>DP Statement</strong> = What client currently
+              <em>holds</em> (snapshot).<br>
+            • <strong>AIS Statement</strong> = What was
+              <em>bought/sold</em> during the year (reported by brokers
+              to Income Tax Dept).
+        </div>
+
+    </div>
+</div>
+
+<div class="modal-overlay" id="aisReconcileModal"
+     style="display:none; position:fixed; top:0; left:0;
+            width:100%; height:100%; background:rgba(0,0,0,0.5);
+            z-index:1000; justify-content:center; align-items:center;">
+
+    <div style="background:white; border-radius:14px; padding:28px 32px;
+                width:100%; max-width:560px;
+                max-height:90vh; overflow-y:auto;
+                box-shadow:0 8px 32px rgba(0,0,0,0.2);
+                position:relative;">
+
+        <button onclick="closeAisReconcileModal()"
+                style="position:absolute; top:14px; right:18px;
+                       font-size:20px; cursor:pointer; color:#999;
+                       background:none; border:none;">✕</button>
+
+        <div style="font-size:18px; font-weight:700;
+                    color:#0d47a1; margin-bottom:6px;">
+            📊 AIS Reconciliation
+        </div>
+        <div style="font-size:13px; color:#888; margin-bottom:18px;">
+            Upload the client's AIS PDF (Annual Information Statement)
+            from the Income Tax portal.
+        </div>
+
+        <div style="background:#e3f2fd; border-left:4px solid #1976d2;
+                    border-radius:6px; padding:12px 14px;
+                    margin-bottom:14px; font-size:12px;
+                    color:#0d47a1; line-height:1.6;">
+            <strong>📋 What this does:</strong>
+            <ul style="margin:6px 0 0 18px; padding:0;">
+                <li>Reads SFT-017 (purchases) & SFT-018 (sales) from AIS</li>
+                <li>Compares <strong>quantity</strong> & <strong>value</strong>
+                    with app transactions</li>
+                <li>Shows differences (App − AIS) in separate columns</li>
+                <li>Drill-down per-date for each company</li>
+            </ul>
+        </div>
+
+        <div style="background:#fff3cd; border-left:4px solid #ffc107;
+                    border-radius:6px; padding:10px 12px;
+                    margin-bottom:14px; font-size:11px;
+                    color:#5d4037; line-height:1.5;">
+            ⚠️ <strong>Important:</strong> The PDF must be the
+            <strong>decrypted</strong> version. If you opened the AIS
+            file in Notepad and saw random characters, it is still
+            encrypted — open it in the AIS Utility from the IT portal
+            and save/print it as PDF first.
+        </div>
+
+        <form method="POST"
+              action="{{ url_for('upload_ais_reconciliation',
+                         client_id=client[0]) }}"
+              enctype="multipart/form-data"
+              id="aisReconForm">
+
+            <input type="hidden" name="fin_year" value="{{ fin_year }}">
+
+            <div class="form-group">
+                <label class="form-label">
+                    📎 Upload AIS PDF (FY {{ fin_year }})
+                </label>
+                <input class="recon-file-input" type="file"
+                       name="ais_pdf" accept=".pdf" required>
+                <div class="text-muted mt-4" style="font-size:11px;">
+                    Will compare with all transactions of FY {{ fin_year }}
+                    in the app.
+                </div>
+            </div>
+
+            <button type="submit"
+                    class="btn btn-primary btn-full"
+                    id="aisReconBtn"
+                    style="background:#1976d2;">
+                🔍 Run AIS Reconciliation
+            </button>
+        </form>
+
+        <div style="background:#f8f9fa; border:1px solid #dee2e6;
+                    border-radius:6px; padding:10px 12px;
+                    margin-top:14px; font-size:11px;
+                    color:#555; line-height:1.6;">
+            <strong>⚡ How it works:</strong><br>
+            • Rules-based PDF parser (no AI needed)<br>
+            • Match by ISIN → exact name → 70%+ fuzzy<br>
+            • Shows summary + per-date drill-down<br>
+            • Excel download with 5 sheets
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="reconcileModal"
+     style="display:none; position:fixed; top:0; left:0;
+            width:100%; height:100%; background:rgba(0,0,0,0.5);
+            z-index:1000; justify-content:center; align-items:center;">
+
+    <div style="background:white; border-radius:14px; padding:28px 32px;
+                width:100%; max-width:560px;
+                max-height:90vh; overflow-y:auto;
+                box-shadow:0 8px 32px rgba(0,0,0,0.2);
+                position:relative;">
+
+        <button onclick="closeReconcileModal()"
+                style="position:absolute; top:14px; right:18px;
+                       font-size:20px; cursor:pointer; color:#999;
+                       background:none; border:none;">✕</button>
+
+        <div style="font-size:18px; font-weight:700;
+                    color:#1a237e; margin-bottom:6px;">
+            🔍 Reconciliation Tool
+        </div>
+        <div style="font-size:13px; color:#888; margin-bottom:18px;">
+            Compare client's actual DP holdings with the app's
+            calculated portfolio.
+        </div>
+
+        <div class="recon-info-box">
+            <strong>📋 What this does:</strong>
+            <ul>
+                <li>✅ Matched holdings</li>
+                <li>⚠️ Quantity mismatches (with suggested causes)</li>
+                <li>❌ Companies in DP but missing from app</li>
+                <li>❌ Companies in app but missing from DP</li>
+            </ul>
+        </div>
+
+        <div style="display:flex; gap:6px; margin-bottom:14px;
+                    background:#f5f6fa; padding:5px;
+                    border-radius:8px;">
+            <button type="button"
+                    class="recon-method-btn active"
+                    id="modalReconMethodPdfBtn"
+                    onclick="modalSwitchReconMethod('pdf')">
+                🤖 Auto (PDF)
+            </button>
+            <button type="button"
+                    class="recon-method-btn"
+                    id="modalReconMethodManualBtn"
+                    onclick="modalSwitchReconMethod('manual')">
+                ✏️ Manual (Excel)
+            </button>
+        </div>
+
+        <div id="modalReconMethodPdf">
+
+            <div class="recon-multi-box">
+                <strong>💡 Multiple Statements?</strong>
+                If the client has demat accounts at
+                <strong>both NSDL and CDSL</strong>, upload
+                <strong>both PDFs together</strong>.
+            </div>
+
+            <form method="POST"
+                  action="{{ url_for('upload_reconciliation',
+                             client_id=client[0]) }}"
+                  enctype="multipart/form-data"
+                  id="modalReconForm">
+
+                <input type="hidden" name="fin_year" value="{{ fin_year }}">
+
+                <div class="form-group">
+                    <label class="form-label">
+                        📎 Upload DP Statement(s)
+                    </label>
+                    <input class="recon-file-input" type="file"
+                           name="dp_pdfs" accept=".pdf"
+                           multiple required>
+                    <div class="text-muted mt-4"
+                         style="font-size:11px;">
+                        Tip: Hold Ctrl (or Cmd on Mac) to select
+                        multiple PDFs at once.
+                    </div>
+                </div>
+
+                <button type="submit"
+                        class="btn btn-primary btn-full"
+                        id="modalReconBtn">
+                    🔍 Run Reconciliation
+                </button>
+            </form>
+
+            <div class="recon-tech-box">
+                <strong>⚡ How it works:</strong><br>
+                • Eureka PDFs → instant rules extraction<br>
+                • Other brokers → AI fallback<br>
+                • Match by ISIN → exact name → 70%+ fuzzy
+            </div>
+
+            <div style="background:#fff8e1; border-left:4px solid #ffa000;
+                        border-radius:6px; padding:10px 12px;
+                        margin-top:14px; font-size:11px;
+                        color:#5d4037; line-height:1.5;">
+                ⚠️ <strong>PDF not working?</strong> Switch to
+                <strong>✏️ Manual (Excel)</strong> above — always works!
+            </div>
+        </div>
+
+        <div id="modalReconMethodManual" style="display:none;">
+
+            <div style="background:#e3f2fd;
+                        border-left:4px solid #1976d2;
+                        border-radius:6px; padding:12px 14px;
+                        margin-bottom:14px; font-size:12px;
+                        color:#0d47a1; line-height:1.6;">
+                <strong>✏️ Manual Method (Always Works)</strong>
+                <ol style="margin:6px 0 0 18px; padding:0;">
+                    <li>Download the Excel template below</li>
+                    <li>Fill in holdings (ISIN, Company, Free, Pledged)</li>
+                    <li>Set the Bill Date in cell B1</li>
+                    <li>Upload the filled Excel — done!</li>
+                </ol>
+            </div>
+
+            <div class="section-divider">📥 Step 1: Download Template</div>
+
+            <a href="{{ url_for('download_manual_holdings_template') }}"
+               class="btn btn-outline-green btn-full"
+               style="margin-bottom:14px;">
+                ⬇️ Download DP Holdings Template
+            </a>
+
+            <div class="section-divider">📤 Step 2: Upload Filled Excel</div>
+
+            <form method="POST"
+                  action="{{ url_for('upload_reconciliation_excel',
+                             client_id=client[0]) }}"
+                  enctype="multipart/form-data"
+                  id="modalReconExcelForm">
+
+                <input type="hidden" name="fin_year" value="{{ fin_year }}">
+
+                <div class="form-group">
+                    <label class="form-label">
+                        📎 Upload Filled Holdings Excel
+                    </label>
+                    <input class="recon-file-input" type="file"
+                           name="holdings_excel"
+                           accept=".xlsx,.xls"
+                           required>
+                </div>
+
+                <button type="submit"
+                        class="btn btn-success btn-full"
+                        id="modalReconExcelBtn">
+                    🔍 Run Reconciliation
+                </button>
+            </form>
+
+            <div style="background:#f5f5f5; border:1px solid #ddd;
+                        border-radius:6px; padding:10px 12px;
+                        margin-top:14px; font-size:11px;
+                        color:#555; line-height:1.6;">
+                <strong>💡 Tips for filling the template:</strong><br>
+                • Set Bill Date in cell B1 (format: YYYY-MM-DD)<br>
+                • ISIN starts with INE/IN9/INF (12 chars total)<br>
+                • Pledged Qty = 0 if none<br>
+                • Delete example rows before adding real data
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div class="modal-overlay" id="compatModal"
+     style="display:none; position:fixed; top:0; left:0;
+            width:100%; height:100%; background:rgba(0,0,0,0.5);
+            z-index:1000; justify-content:center; align-items:center;">
+
+    <div class="compat-modal-box">
+
+        <button onclick="closeCompatModal()"
+                style="position:absolute; top:14px; right:18px;
+                       font-size:22px; cursor:pointer; color:#999;
+                       background:none; border:none; line-height:1;">
+            ✕
+        </button>
+
+        <div style="font-size:18px; font-weight:700;
+                    color:#1a237e; margin-bottom:6px;">
+            📋 PDF Compatibility Guide
+        </div>
+        <div style="font-size:12px; color:#888; margin-bottom:20px;
+                    line-height:1.6;">
+            The AI extractor works on most broker PDFs but has limitations.
+            Here's what to expect for different document types:
+        </div>
+
+        <div class="compat-row good">
+            <div class="compat-icon">✅</div>
+            <div class="compat-text compat-good">
+                <strong>Daily Contract Notes (Best)</strong>
+                <div class="desc">
+                    Single-day broker confirmation with clear
+                    "Net Amount Payable" total.<br><br>
+                    ✓ Full math verification (green/red banner)<br>
+                    ✓ Per-row warnings for anomalies<br>
+                    ✓ Most accurate extraction
+                </div>
+            </div>
+        </div>
+
+        <div class="compat-row partial">
+            <div class="compat-icon">⚠️</div>
+            <div class="compat-text compat-partial">
+                <strong>Quarterly / Annual Holding Statements</strong>
+                <div class="desc">
+                    Lists many trades across months. AI will extract
+                    transactions but cannot verify totals.
+                </div>
+            </div>
+        </div>
+
+        <div class="compat-row bad">
+            <div class="compat-icon">❌</div>
+            <div class="compat-text compat-bad">
+                <strong>DP Holding Statements (NSDL / CDSL)</strong>
+                <div class="desc">
+                    Only lists current holdings, not the trades.<br><br>
+                    💡 Use the <strong>🔍 Reconcile button</strong> instead —
+                    it's specifically designed for them!
+                </div>
+            </div>
+        </div>
+
+        <div class="btn-row" style="margin-bottom:0; margin-top:20px;">
+            <button type="button" class="btn btn-primary" style="flex:1;"
+                    onclick="closeCompatModal()">
+                Got it!
+            </button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+
+{% block extra_script %}
+<script>
+
+    function toggleLossBar() {
+        const body    = document.getElementById("lossBarBody");
+        const chevron = document.getElementById("lossChevron");
+        const isOpen  = body.classList.contains("open");
+        if (isOpen) {
+            body.classList.remove("open");
+            chevron.classList.remove("open");
+        } else {
+            body.classList.add("open");
+            chevron.classList.add("open");
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        {% if all_losses %}
+        toggleLossBar();
+        {% endif %}
+    });
+
+    const ORIGINAL_PAN = "{{ client[2] }}";
+
+    function openEditDetailsModal() {
+        document.getElementById("editDetailsModal").style.display = "flex";
+        document.getElementById("panWarningBox").style.display = "none";
+    }
+
+    function closeEditDetailsModal() {
+        document.getElementById("editDetailsModal").style.display = "none";
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const panInput   = document.getElementById("editPan");
+        const panWarning = document.getElementById("panWarningBox");
+        const panPreview = document.getElementById("panPreview");
+        if (panInput) {
+            panInput.addEventListener("input", function() {
+                const newPan = this.value.toUpperCase().trim();
+                if (newPan !== ORIGINAL_PAN && newPan.length > 0) {
+                    panPreview.textContent   = newPan;
+                    panWarning.style.display = "block";
+                } else {
+                    panWarning.style.display = "none";
+                }
+            });
+        }
+    });
+
+    function confirmDetailsSubmit() {
+        const newPan = document.getElementById("editPan")
+                       .value.toUpperCase().trim();
+        if (newPan.length !== 10) {
+            alert("⚠️ PAN must be exactly 10 characters.");
+            return false;
+        }
+        if (newPan !== ORIGINAL_PAN) {
+            return confirm(
+                "⚠️ You're about to change the PAN.\n\n" +
+                "Original PAN: " + ORIGINAL_PAN + "\n" +
+                "New PAN: " + newPan + "\n\n" +
+                "This is a sensitive change. Are you absolutely sure?"
+            );
+        }
+        return true;
+    }
+
+    document.getElementById("editDetailsModal").addEventListener("click",
+        function(e) {
+            if (e.target === this) closeEditDetailsModal();
+        }
+    );
+
+    function openCompatModal() {
+        document.getElementById("compatModal").style.display = "flex";
+    }
+    function closeCompatModal() {
+        document.getElementById("compatModal").style.display = "none";
+    }
+    document.getElementById("compatModal").addEventListener("click",
+        function(e) { if (e.target === this) closeCompatModal(); }
+    );
+
+    function openLossModal(action, lossId, lossYear, stcl, ltcl, notes) {
+        const modal      = document.getElementById("lossModal");
+        const heading    = document.getElementById("lossModalHeading");
+        const desc       = document.getElementById("lossModalDescription");
+        const form       = document.getElementById("lossForm");
+        const yearInput  = document.getElementById("lossYearInput");
+        const stclInput  = document.getElementById("stclInput");
+        const ltclInput  = document.getElementById("ltclInput");
+        const notesInput = document.getElementById("lossNotesInput");
+        const submitBtn  = document.getElementById("lossSubmitBtn");
+
+        if (action === "edit") {
+            heading.textContent  = "✏️ Edit Loss";
+            desc.textContent     = "Modify the loss amounts.";
+            form.action          = "/edit_loss/" + lossId;
+            yearInput.value      = lossYear || "";
+            stclInput.value      = stcl || 0;
+            ltclInput.value      = ltcl || 0;
+            notesInput.value     = notes || "";
+            submitBtn.textContent = "💾 Update Loss";
+        } else {
+            heading.textContent  = "📉 Add Old Loss";
+            desc.textContent     = "Enter losses from previous years " +
+                                   "(before app usage).";
+            form.action          = "/add_loss/{{ client[0] }}";
+            yearInput.value      = "";
+            stclInput.value      = "0";
+            ltclInput.value      = "0";
+            notesInput.value     = "";
+            submitBtn.textContent = "💾 Save Loss";
+        }
+        modal.style.display = "flex";
+    }
+
+    function closeLossModal() {
+        document.getElementById("lossModal").style.display = "none";
+    }
+
+    document.getElementById("lossModal").addEventListener("click",
+        function(e) { if (e.target === this) closeLossModal(); }
+    );
+
+    function openSecurityModal(action) {
+        const modal      = document.getElementById("securityModal");
+        const heading    = document.getElementById("modalHeading");
+        const desc       = document.getElementById("modalDescription");
+        const actionInput = document.getElementById("modalAction");
+        const pwdFields  = document.getElementById("passwordFields");
+        const removeBox  = document.getElementById("removeConfirm");
+        const submitBtn  = document.getElementById("modalSubmitBtn");
+        const newPwd     = document.getElementById("newPwdInput");
+        const confirmPwd = document.getElementById("confirmPwdInput");
+
+        actionInput.value = action;
+        newPwd.value      = "";
+        confirmPwd.value  = "";
+
+        if (action === "set") {
+            heading.textContent  = "🔒 Set Password";
+            desc.textContent     = "Protect this client with a password.";
+            pwdFields.style.display = "block";
+            removeBox.style.display = "none";
+            submitBtn.textContent   = "🔒 Set Password";
+            newPwd.required = true; confirmPwd.required = true;
+        } else if (action === "change") {
+            heading.textContent  = "🔑 Change Password";
+            desc.textContent     = "Enter a new password for this client.";
+            pwdFields.style.display = "block";
+            removeBox.style.display = "none";
+            submitBtn.textContent   = "🔑 Update Password";
+            newPwd.required = true; confirmPwd.required = true;
+        } else if (action === "remove") {
+            heading.textContent  = "🔓 Remove Password";
+            desc.textContent     = "Remove password protection.";
+            pwdFields.style.display = "none";
+            removeBox.style.display = "block";
+            submitBtn.textContent   = "🔓 Remove Password";
+            newPwd.required = false; confirmPwd.required = false;
+        }
+        modal.style.display = "flex";
+    }
+
+    function switchModalAction(newAction) { openSecurityModal(newAction); }
+
+    function closeSecurityModal() {
+        document.getElementById("securityModal").style.display = "none";
+    }
+
+    document.getElementById("securityModal").addEventListener("click",
+        function(e) { if (e.target === this) closeSecurityModal(); }
+    );
+
+    document.addEventListener("keydown", function(e) {
+        if (e.key === "Escape") {
+            closeSecurityModal();
+            closeLossModal();
+            closeCompatModal();
+            closeEditDetailsModal();
+            closeReconcileModal();
+            closeReconcileChoiceModal();
+            closeAisReconcileModal();
+        }
+    });
+
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-panel').forEach(p => {
+            p.classList.remove('active');
+        });
+        document.querySelectorAll('.tab-btn').forEach(b => {
+            b.classList.remove('active');
+        });
+        document.getElementById('panel-'  + tabName).classList.add('active');
+        document.getElementById('tab-btn-'+ tabName).classList.add('active');
+    }
+
+    const pdfForm = document.getElementById("pdfForm");
+    const pdfBtn  = document.getElementById("pdfBtn");
+    if (pdfForm) {
+        pdfForm.addEventListener("submit", function() {
+            pdfBtn.innerHTML = "⏳ AI reading PDF... (10-20 sec)";
+            pdfBtn.disabled  = true;
+            pdfBtn.style.opacity = "0.7";
+        });
+    }
+
+    function openReconcileChoiceModal() {
+        document.getElementById("reconcileChoiceModal").style.display = "flex";
+    }
+
+    function closeReconcileChoiceModal() {
+        document.getElementById("reconcileChoiceModal").style.display = "none";
+    }
+
+    function chooseDpReconcile() {
+        closeReconcileChoiceModal();
+        openReconcileModal();
+    }
+
+    function chooseAisReconcile() {
+        closeReconcileChoiceModal();
+        openAisReconcileModal();
+    }
+
+    function openAisReconcileModal() {
+        document.getElementById("aisReconcileModal").style.display = "flex";
+    }
+
+    function closeAisReconcileModal() {
+        document.getElementById("aisReconcileModal").style.display = "none";
+    }
+
+    document.getElementById("reconcileChoiceModal").addEventListener("click",
+        function(e) {
+            if (e.target === this) closeReconcileChoiceModal();
+        }
+    );
+
+    document.getElementById("aisReconcileModal").addEventListener("click",
+        function(e) {
+            if (e.target === this) closeAisReconcileModal();
+        }
+    );
+
+    const aisReconForm = document.getElementById("aisReconForm");
+    const aisReconBtn  = document.getElementById("aisReconBtn");
+    if (aisReconForm) {
+        aisReconForm.addEventListener("submit", function() {
+            aisReconBtn.innerHTML = "⏳ Reading AIS PDF...";
+            aisReconBtn.disabled  = true;
+            aisReconBtn.style.opacity = "0.7";
+        });
+    }
+
+    function openReconcileModal() {
+        document.getElementById("reconcileModal").style.display = "flex";
+    }
+
+    function closeReconcileModal() {
+        document.getElementById("reconcileModal").style.display = "none";
+    }
+
+    document.getElementById("reconcileModal").addEventListener("click",
+        function(e) {
+            if (e.target === this) closeReconcileModal();
+        }
+    );
+
+    function modalSwitchReconMethod(method) {
+        const pdfDiv    = document.getElementById("modalReconMethodPdf");
+        const manualDiv = document.getElementById("modalReconMethodManual");
+        const pdfBtn    = document.getElementById("modalReconMethodPdfBtn");
+        const manualBtn = document.getElementById("modalReconMethodManualBtn");
+
+        if (method === "pdf") {
+            pdfDiv.style.display    = "block";
+            manualDiv.style.display = "none";
+            pdfBtn.classList.add("active");
+            manualBtn.classList.remove("active");
+        } else {
+            pdfDiv.style.display    = "none";
+            manualDiv.style.display = "block";
+            pdfBtn.classList.remove("active");
+            manualBtn.classList.add("active");
+        }
+    }
+
+    const modalReconForm = document.getElementById("modalReconForm");
+    const modalReconBtn  = document.getElementById("modalReconBtn");
+    if (modalReconForm) {
+        modalReconForm.addEventListener("submit", function() {
+            modalReconBtn.innerHTML = "⏳ Analyzing DP statement(s)...";
+            modalReconBtn.disabled  = true;
+            modalReconBtn.style.opacity = "0.7";
+        });
+    }
+
+    const modalReconExcelForm = document.getElementById("modalReconExcelForm");
+    const modalReconExcelBtn  = document.getElementById("modalReconExcelBtn");
+    if (modalReconExcelForm) {
+        modalReconExcelForm.addEventListener("submit", function() {
+            modalReconExcelBtn.innerHTML = "⏳ Processing Excel...";
+            modalReconExcelBtn.disabled  = true;
+            modalReconExcelBtn.style.opacity = "0.7";
+        });
+    }
+
+    function highlightFmv() {
+        const fmvEl = document.getElementById("fmv-section");
+        if (fmvEl) {
+            setTimeout(() => {
+                fmvEl.classList.add("highlight");
+                setTimeout(() => fmvEl.classList.remove("highlight"), 1500);
+            }, 300);
+        }
+    }
+
+    const hints = {
+        "BUY"    : "💡 STT typically applies on buy side too — check contract note.",
+        "SELL"   : "💡 STT @ 0.1% of value usually applies on delivery sell.",
+        "BUYBACK": "💡 STT @ 0.2% may apply on buyback value.",
+        "BONUS"  : "💡 Amount = 0. STT = 0 (no trade — free shares).",
+        "SPLIT"  : "💡 Amount = split ratio. STT = 0 (no trade).",
+        "GIFT"   : "💡 Date = donor's buy date. STT = 0 (no trade by you).",
+        "INHERIT": "💡 Date = owner's buy date. STT = 0 (no trade by you)."
+    };
+
+    function showTypeHint(selectedType) {
+        const hintBox     = document.getElementById("typeHint");
+        const amountLabel = document.getElementById("amountLabel");
+        const amountInput = document.getElementById("amountInput");
+        const qtyInput    = document.getElementById("qtyInput");
+        const sttInput    = document.getElementById("sttInput");
+        const hint        = hints[selectedType] || "";
+
+        hintBox.textContent   = hint;
+        hintBox.style.display = hint ? "block" : "none";
+
+        if (selectedType === "SPLIT") {
+            amountLabel.textContent = "Split Ratio *";
+            amountInput.placeholder = "e.g. 2 for 2:1";
+            qtyInput.value = "1";
+            if (sttInput) sttInput.value = "0";
+        } else if (selectedType === "BONUS") {
+            amountLabel.textContent   = "Total Amount (₹)";
+            amountInput.placeholder   = "0 for bonus";
+            amountInput.value         = "0";
+            if (sttInput) sttInput.value = "0";
+        } else if (selectedType === "GIFT" || selectedType === "INHERIT") {
+            amountLabel.textContent   = "Total Amount (₹) *";
+            amountInput.placeholder   = "Donor's/owner's cost";
+            if (sttInput) sttInput.value = "0";
+        } else {
+            amountLabel.textContent   = "Total Amount (₹) *";
+            amountInput.placeholder   = "Total, not per share";
+        }
+    }
+
+    // ════════════════════════════════════════════════════
+    // AUTOCOMPLETE — Day 16 Phase 6 (Master DB integration)
+    // ════════════════════════════════════════════════════
+    const clientId       = {{ client[0] }};
+    let   savedCompanies = [];
+
+    fetch(`/get_companies/${clientId}`)
+        .then(r => r.json())
+        .then(data => { savedCompanies = data; })
+        .catch(() => { savedCompanies = []; });
+
+    const companyInput    = document.getElementById("companyInput");
+    const autocompleteBox = document.getElementById("autocomplete-box");
+    const warningBox      = document.getElementById("similar-name-warning");
+
+    let mdbDebounceTimer = null;
+
+    if (companyInput) {
+        companyInput.addEventListener("input", function() {
+            const typed = this.value.toUpperCase().trim();
+
+            if (typed.length < 1) {
+                autocompleteBox.style.display = "none";
+                return;
+            }
+
+            // Step 1: Get matches from CLIENT'S OWN data (instant)
+            const clientMatches = savedCompanies.filter(c =>
+                c.name.includes(typed)
+            );
+
+            // Step 2: Render client matches immediately
+            renderAutocomplete(clientMatches, []);
+            autocompleteBox.style.display = "block";
+
+            // Step 3: Debounced fetch from Master DB (slight delay)
+            clearTimeout(mdbDebounceTimer);
+            if (typed.length >= 2) {
+                mdbDebounceTimer = setTimeout(() => {
+                    fetchMasterDbMatches(typed, clientMatches);
+                }, 250);
+            }
+        });
+
+        document.addEventListener("click", function(e) {
+            if (e.target !== companyInput) {
+                autocompleteBox.style.display = "none";
+            }
+        });
+
+        companyInput.addEventListener("blur", function() {
+            setTimeout(() => {
+                autocompleteBox.style.display = "none";
+                checkSimilarNames(this.value.toUpperCase().trim());
+            }, 200);
+        });
+    }
+
+    function fetchMasterDbMatches(typed, clientMatches) {
+        fetch(`/api/master_match?name=${encodeURIComponent(typed)}`)
+            .then(r => r.json())
+            .then(data => {
+                const matches = data.matches || [];
+                // Filter out matches already in client data (by ISIN)
+                const clientIsins = new Set(
+                    clientMatches.filter(c => c.isin).map(c => c.isin)
+                );
+                const newMdbMatches = matches.filter(
+                    m => !clientIsins.has(m.isin)
+                );
+                renderAutocomplete(clientMatches, newMdbMatches);
+            })
+            .catch(err => {
+                console.error("Master DB fetch failed:", err);
+            });
+    }
+
+    function renderAutocomplete(clientMatches, mdbMatches) {
+        autocompleteBox.innerHTML = "";
+
+        if (clientMatches.length === 0 && mdbMatches.length === 0) {
+            autocompleteBox.style.display = "none";
+            return;
+        }
+
+        // ─── Section 1: Client's own data ───
+        if (clientMatches.length > 0) {
+            const label = document.createElement("div");
+            label.className = "autocomplete-section-label";
+            label.textContent = "🟢 From Your Client Data";
+            autocompleteBox.appendChild(label);
+
+            clientMatches.forEach(c => {
+                const item = document.createElement("div");
+                item.className = "autocomplete-item";
+                item.innerHTML = `
+                    <span>
+                        <strong>${c.name}</strong>
+                        ${c.isin
+                          ? `<span style="font-size:11px;color:#888;margin-left:6px;">${c.isin}</span>`
+                          : ""}
+                    </span>
+                    <span class="source-tag client">CLIENT</span>
+                `;
+                item.addEventListener("click", () => {
+                    pickAutocomplete(c.name, c.isin || "");
+                });
+                autocompleteBox.appendChild(item);
+            });
+        }
+
+        // ─── Section 2: Master DB ───
+        if (mdbMatches.length > 0) {
+            const label = document.createElement("div");
+            label.className = "autocomplete-section-label";
+            label.textContent = "🔵 From Master DB";
+            autocompleteBox.appendChild(label);
+
+            mdbMatches.forEach(m => {
+                const item = document.createElement("div");
+                item.className = "autocomplete-item";
+                item.innerHTML = `
+                    <span>
+                        <strong>${m.official_name}</strong>
+                        <span style="font-size:11px;color:#888;margin-left:6px;">
+                            ${m.isin}${m.exchange ? ' · ' + m.exchange : ''}
+                        </span>
+                    </span>
+                    <span class="source-tag master">MASTER</span>
+                `;
+                item.addEventListener("click", () => {
+                    pickAutocomplete(m.official_name, m.isin || "");
+                });
+                autocompleteBox.appendChild(item);
+            });
+        }
+
+        autocompleteBox.style.display = "block";
+    }
+
+    function pickAutocomplete(name, isin) {
+        companyInput.value = name;
+        const isinInput = document.querySelector('input[name="isin"]');
+        if (isinInput && isin && !isinInput.value) {
+            isinInput.value = isin;
+        }
+        autocompleteBox.style.display = "none";
+        checkSimilarNames(name);
+    }
+
+    const NOISE_WORDS = [
+        "LTD","LIMITED","LIMITD","LMITED",
+        "COMPANY","CO","CORP","CORPORATION","INC",
+        "INDIA","INDIAN","OF INDIA",
+        "PVT","PRIVATE","GROUP",
+        "BANK","FINANCE","FINANCIAL","SERVICES","INDUSTRIES",
+        "TECHNOLOGIES","TECHNOLOGY","TECH",
+        "ENTERPRISES","HOLDINGS","VENTURES"
+    ];
+
+    function cleanName(name) {
+        let cleaned = name.toUpperCase().trim();
+        cleaned = cleaned.replace(/[.,&\-()]/g, " ");
+        let words = cleaned.split(/\s+/).filter(w => w.length > 0);
+        words = words.filter(w => !NOISE_WORDS.includes(w));
+        return words.join(" ").trim();
+    }
+
+    function levenshtein(a, b) {
+        if (a === b) return 0;
+        if (a.length === 0) return b.length;
+        if (b.length === 0) return a.length;
+        const matrix = [];
+        for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+        for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+        for (let i = 1; i <= b.length; i++) {
+            for (let j = 1; j <= a.length; j++) {
+                if (b.charAt(i-1) === a.charAt(j-1)) {
+                    matrix[i][j] = matrix[i-1][j-1];
+                } else {
+                    matrix[i][j] = Math.min(
+                        matrix[i-1][j-1]+1,
+                        matrix[i][j-1]+1,
+                        matrix[i-1][j]+1
+                    );
+                }
+            }
+        }
+        return matrix[b.length][a.length];
+    }
+
+    function areSimilar(a, b) {
+        if (a === b) return false;
+        const cleanA = cleanName(a);
+        const cleanB = cleanName(b);
+        if (!cleanA || !cleanB) return false;
+        if (cleanA === cleanB) return true;
+        if (cleanA.length < 4 || cleanB.length < 4) return false;
+        const lenDiff = Math.abs(cleanA.length - cleanB.length);
+        if (lenDiff >= 3) {
+            if (cleanA.includes(cleanB) || cleanB.includes(cleanA))
+                return true;
+        }
+        const distance = levenshtein(cleanA, cleanB);
+        const maxLen   = Math.max(cleanA.length, cleanB.length);
+        return (1 - (distance / maxLen)) >= 0.85;
+    }
+
+    function checkSimilarNames(typedName) {
+        if (!typedName || typedName.length < 2) {
+            warningBox.style.display = "none";
+            return;
+        }
+        const similar = savedCompanies.filter(c =>
+            c.name !== typedName && areSimilar(typedName, c.name)
+        );
+        if (similar.length === 0) {
+            warningBox.style.display = "none";
+            return;
+        }
+        const names = similar.map(c => `<strong>${c.name}</strong>`).join(", ");
+        warningBox.innerHTML = `
+            ⚠️ <strong>Similar company exists:</strong> ${names}<br>
+            Same company? Use existing name for correct FIFO.<br>
+            <span style="color:#888; font-size:11px;">
+                Tip: Same ISIN = same company.
+            </span>`;
+        warningBox.style.display = "block";
+    }
+
+</script>
+{% endblock %}

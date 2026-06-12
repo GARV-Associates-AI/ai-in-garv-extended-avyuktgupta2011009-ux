@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FMV Required — {{ client[1] }}</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f0f4f8;
+            color: #333;
+        }
+
+        .topbar {
+            background: #1a237e;
+            color: white;
+            padding: 14px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .topbar h1 { font-size: 18px; }
+        .topbar a { color: white; font-size: 13px; text-decoration: none; opacity: 0.85; }
+
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        .warning-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            border-top: 6px solid #ff9800;
+        }
+
+        .warning-header {
+            background: #fff3e0;
+            padding: 28px 32px;
+            text-align: center;
+        }
+
+        .warning-header .icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .warning-header h2 {
+            font-size: 24px;
+            color: #e65100;
+            margin-bottom: 8px;
+        }
+
+        .warning-header p {
+            font-size: 14px;
+            color: #666;
+            max-width: 520px;
+            margin: 0 auto;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #1976d2;
+            padding: 16px 20px;
+            margin: 24px 32px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #0d47a1;
+            line-height: 1.6;
+        }
+
+        .info-box strong { color: #1565c0; }
+
+        .companies-section {
+            padding: 0 32px 24px;
+        }
+
+        .companies-section h3 {
+            font-size: 15px;
+            color: #1a237e;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
+        .company-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .company-table thead th {
+            background: #f5f5f5;
+            padding: 10px 14px;
+            text-align: left;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            color: #555;
+            border-bottom: 2px solid #eee;
+        }
+
+        .company-table tbody td {
+            padding: 12px 14px;
+            border-bottom: 1px solid #f5f5f5;
+        }
+
+        .company-table tbody tr:hover { background: #fafafa; }
+
+        .company-name {
+            font-weight: 700;
+            color: #1a237e;
+            font-size: 14px;
+        }
+
+        .company-detail {
+            font-size: 12px;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        .action-bar {
+            background: #fafafa;
+            padding: 24px 32px;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 12px;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 11px 22px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn:hover { opacity: 0.85; }
+
+        .btn-primary { background: #1a237e; color: white; }
+        .btn-success { background: #2e7d32; color: white; }
+        .btn-warning { background: #f57c00; color: white; }
+        .btn-outline {
+            background: white;
+            color: #1a237e;
+            border: 2px solid #1a237e;
+        }
+
+        .impact-box {
+            background: #fff8e1;
+            border: 1.5px solid #ffc107;
+            padding: 16px 20px;
+            margin: 0 32px 20px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #5d4037;
+        }
+
+        .impact-box .label {
+            font-weight: 700;
+            color: #e65100;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .fmv-resources {
+            background: #f3e5f5;
+            padding: 14px 18px;
+            margin: 0 32px 20px;
+            border-radius: 6px;
+            border-left: 4px solid #7b1fa2;
+            font-size: 12px;
+            color: #4a148c;
+        }
+
+        .fmv-resources a {
+            color: #6a1b9a;
+            text-decoration: underline;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <h1>⚖️ Capital Gains AI</h1>
+    <a href="{{ url_for('client_page', client_id=client[0], fin_year=fin_year) }}">
+        ← Back to Client
+    </a>
+</div>
+
+<div class="container">
+
+    <div class="warning-card">
+
+        <!-- Warning Header -->
+        <div class="warning-header">
+            <div class="icon">⚠️</div>
+            <h2>FMV Data Required for Accurate Calculation</h2>
+            <p>
+                Some of your sold shares were purchased <strong>before 31-Jan-2018</strong>.
+                Under <strong>Section 112A grandfathering</strong>, we need the Fair Market Value
+                on that date to calculate tax correctly.
+            </p>
+        </div>
+
+        <!-- Info Box -->
+        <div class="info-box">
+            <strong>💡 What is Grandfathering?</strong><br>
+            For shares bought before 31-Jan-2018, the cost is the HIGHER of:
+            <br>
+            (a) Original purchase price, OR
+            <br>
+            (b) MIN of (FMV on 31-Jan-2018, Actual sale price)
+            <br><br>
+            Without FMV, the tool will use the original purchase price —
+            which may result in <strong>higher tax than required</strong>.
+        </div>
+
+        <!-- Companies Needing FMV -->
+        <div class="companies-section">
+            <h3>📋 Companies Needing FMV ({{ missing_fmv | length }})</h3>
+
+            <table class="company-table">
+                <thead>
+                    <tr>
+                        <th>Company</th>
+                        <th>Pre-2018 Buys</th>
+                        <th>Quantity</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in missing_fmv %}
+                    <tr>
+                        <td>
+                            <div class="company-name">{{ m.company }}</div>
+                            <div class="company-detail">
+                                Earliest buy: {{ m.earliest_buy_date }}
+                            </div>
+                        </td>
+                        <td>{{ m.pre_2018_buys }} transaction(s)</td>
+                        <td>{{ m.total_pre_2018_qty }} shares</td>
+                        <td><span class="badge">FMV MISSING</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Impact Notice -->
+        <div class="impact-box">
+            <span class="label">⚡ What happens if you proceed without FMV?</span>
+            For these companies, tax will be calculated using the original purchase
+            cost (without grandfathering benefit). This typically results in
+            <strong>higher LTCG tax</strong> than what would apply under Section 112A.
+        </div>
+
+        <!-- Resources -->
+        <div class="fmv-resources">
+            💡 <strong>Where to find FMV?</strong><br>
+            • BSE: <a href="https://www.bseindia.com" target="_blank">bseindia.com</a>
+              → Markets → Equity → Historical Data → 31-Jan-2018 (closing price)<br>
+            • NSE: <a href="https://www.nseindia.com" target="_blank">nseindia.com</a>
+              → Reports → Historical Data → 31-Jan-2018 (closing price)<br>
+            • Use the HIGHER of BSE/NSE closing price as FMV
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-bar">
+            <a href="{{ url_for('client_page', client_id=client[0], fin_year=fin_year) }}"
+               class="btn btn-success">
+                ✏️ Go Back & Add FMV Data
+            </a>
+
+            <a href="{{ url_for('calculate', client_id=client[0], fin_year=fin_year) }}?force=yes"
+               class="btn btn-warning"
+               onclick="return confirm('Proceed without FMV?\\n\\nTax will be calculated using original cost (no grandfathering benefit). This may result in higher tax for these companies.\\n\\nContinue?')">
+                ⏭️ Proceed Anyway (Without Grandfathering)
+            </a>
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>

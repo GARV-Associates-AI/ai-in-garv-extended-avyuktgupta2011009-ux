@@ -1,0 +1,1012 @@
+{% extends "base.html" %}
+{% set active_page = "client" %}
+
+{% block title %}Reconciliation Result — {{ client_name }}{% endblock %}
+
+{% block extra_style %}
+<style>
+
+    .recon-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        margin-bottom: 24px;
+    }
+    @media (max-width: 900px) {
+        .recon-summary-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 500px) {
+        .recon-summary-grid { grid-template-columns: 1fr; }
+    }
+
+    .recon-stat-card {
+        background: white;
+        border-radius: 10px;
+        padding: 16px 18px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+        border-top: 4px solid #ccc;
+        text-align: center;
+    }
+    .recon-stat-card.green  { border-top-color: #2e7d32; }
+    .recon-stat-card.yellow { border-top-color: #f57c00; }
+    .recon-stat-card.orange { border-top-color: #e64a19; }
+    .recon-stat-card.red    { border-top-color: #c62828; }
+    .recon-stat-card.blue   { border-top-color: #1565c0; }
+
+    .recon-stat-number {
+        font-size: 32px;
+        font-weight: 800;
+        line-height: 1;
+        margin-bottom: 4px;
+    }
+    .recon-stat-card.green  .recon-stat-number { color: #2e7d32; }
+    .recon-stat-card.yellow .recon-stat-number { color: #f57c00; }
+    .recon-stat-card.orange .recon-stat-number { color: #e64a19; }
+    .recon-stat-card.red    .recon-stat-number { color: #c62828; }
+    .recon-stat-card.blue   .recon-stat-number { color: #1565c0; }
+
+    .recon-stat-label {
+        font-size: 11px;
+        font-weight: 700;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+
+    .recon-section {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+
+    .recon-section-header {
+        padding: 12px 18px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 14px;
+        font-weight: 700;
+        flex-wrap: wrap;
+        justify-content: space-between;
+    }
+    .recon-section-header.green {
+        background: linear-gradient(to right, #e8f5e9, #c8e6c9);
+        color: #1b5e20;
+    }
+    .recon-section-header.yellow {
+        background: linear-gradient(to right, #fff8e1, #ffecb3);
+        color: #e65100;
+    }
+    .recon-section-header.orange {
+        background: linear-gradient(to right, #fbe9e7, #ffccbc);
+        color: #bf360c;
+    }
+    .recon-section-header.red {
+        background: linear-gradient(to right, #ffebee, #ffcdd2);
+        color: #b71c1c;
+    }
+    .recon-section-header.blue {
+        background: linear-gradient(to right, #e3f2fd, #bbdefb);
+        color: #0d47a1;
+    }
+
+    .recon-count-badge {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 3px 10px;
+        border-radius: 10px;
+        background: rgba(255,255,255,0.6);
+    }
+
+    .recon-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+    }
+    .recon-table th {
+        background: #f5f6fa;
+        padding: 9px 14px;
+        text-align: left;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        color: #666;
+        border-bottom: 2px solid #e0e0e0;
+    }
+    .recon-table td {
+        padding: 10px 14px;
+        border-bottom: 1px solid #f0f0f0;
+        vertical-align: middle;
+    }
+    .recon-table tr:last-child td { border-bottom: none; }
+    .recon-table tr:hover td { background: #fafafa; }
+
+    .tier-badge {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 8px;
+        border-radius: 8px;
+        white-space: nowrap;
+    }
+    .tier-isin   { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+    .tier-name   { background: #e3f2fd; color: #1565c0; border: 1px solid #90caf9; }
+    .tier-master { background: #e8eaf6; color: #283593; border: 1px solid #9fa8da; }
+    .tier-fuzzy  { background: #f3e5f5; color: #6a1b9a; border: 1px solid #ce93d8; }
+    .tier-user   { background: #fff8e1; color: #f57c00; border: 1px solid #ffe082; }
+
+    .diff-positive { color: #2e7d32; font-weight: 700; }
+    .diff-negative { color: #c62828; font-weight: 700; }
+
+    .cause-pill {
+        display: inline-block;
+        font-size: 10px;
+        padding: 2px 8px;
+        border-radius: 8px;
+        background: #fff3e0;
+        color: #e65100;
+        border: 1px solid #ffcc80;
+    }
+
+    .isin-mono {
+        font-family: monospace;
+        font-size: 11px;
+        color: #888;
+    }
+
+    .ambig-card {
+        background: #f8f9ff;
+        border: 1.5px solid #90caf9;
+        border-radius: 8px;
+        padding: 14px 16px;
+        margin-bottom: 12px;
+    }
+    .ambig-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: #0d47a1;
+        margin-bottom: 10px;
+    }
+    .ambig-dp-name {
+        display: inline-block;
+        background: #e3f2fd;
+        color: #0d47a1;
+        padding: 3px 10px;
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 13px;
+        margin-bottom: 8px;
+    }
+    .ambig-option {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        border-radius: 6px;
+        border: 1.5px solid #e0e0e0;
+        margin-bottom: 6px;
+        cursor: pointer;
+        transition: all 0.1s;
+        background: white;
+    }
+    .ambig-option:hover { border-color: #1976d2; background: #f0f7ff; }
+    .ambig-option input[type="radio"] {
+        accent-color: #1976d2;
+        width: 16px; height: 16px;
+        flex-shrink: 0;
+    }
+    .ambig-option-name { font-weight: 700; font-size: 13px; color: #333; }
+    .ambig-option-score { font-size: 11px; color: #888; margin-left: auto; }
+    .ambig-option-none { border-color: #ffcc80; background: #fffde7; }
+    .ambig-option-none:hover { border-color: #ffa000; background: #fff8e1; }
+
+    .recon-empty {
+        padding: 24px;
+        text-align: center;
+        color: #aaa;
+        font-size: 13px;
+    }
+
+    .recon-action-bar {
+        background: #f5f6fa;
+        border-radius: 10px;
+        padding: 16px 20px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 24px;
+        border: 1.5px solid #e0e0e0;
+    }
+
+    .table-wrap { overflow-x: auto; }
+
+    /* Day 16 Phase 5 — Master DB checkbox styles */
+    .mdb-save-cell {
+        background: #e8eaf6 !important;
+    }
+    .mdb-save-label {
+        font-size: 10px;
+        color: #283593;
+        display: block;
+        margin-top: 3px;
+        font-weight: 600;
+    }
+
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <div class="breadcrumb">
+        <a href="{{ url_for('dashboard') }}">Dashboard</a> ›
+        <a href="{{ url_for('client_page', client_id=client_id) }}">
+            {{ client_name }}
+        </a> ›
+        Reconciliation
+    </div>
+    <div class="page-header-row">
+        <h1>🔍 Reconciliation Result</h1>
+        <div class="btn-row" style="margin-bottom:0;">
+            <a href="{{ url_for('client_page', client_id=client_id) }}"
+               class="btn btn-outline">
+                ← Back to Client
+            </a>
+        </div>
+    </div>
+    <div class="text-muted mt-4">
+        {{ client_name }}
+        {% if bill_date %}
+        · DP Statement as on <strong>{{ bill_date }}</strong>
+        {% endif %}
+        {% if sources %}
+        · Source(s):
+        {% for s in sources %}
+            <span style="background:#e8eaf6; padding:1px 6px;
+                         border-radius:4px; font-size:11px;
+                         font-weight:600; color:#3949ab;">
+                {{ s }}
+            </span>
+        {% endfor %}
+        {% endif %}
+    </div>
+</div>
+
+{% if ambiguous %}
+<div class="recon-section" style="border-left:4px solid #1976d2;">
+    <div class="recon-section-header blue">
+        <span>🤔 Ambiguous Matches — Please Pick the Right Company</span>
+        <span class="recon-count-badge">{{ ambiguous|length }} to resolve</span>
+    </div>
+
+    <div style="padding:16px 18px;">
+
+        <div style="background:#e3f2fd; border-left:4px solid #1976d2;
+                    border-radius:6px; padding:10px 14px; margin-bottom:16px;
+                    font-size:12px; color:#0d47a1; line-height:1.6;">
+            ℹ️ The app found <strong>multiple possible matches</strong>
+            for these DP holdings. Please select the correct company
+            for each one, or choose "No match" to treat it as unmatched.
+            Once done, click <strong>Confirm Choices</strong>.
+        </div>
+
+        <form method="POST"
+              action="{{ url_for('resolve_ambiguous', client_id=client_id) }}">
+            <input type="hidden" name="fin_year" value="{{ fin_year }}">
+
+            {% for item in ambiguous %}
+            <div class="ambig-card">
+                <div class="ambig-title">
+                    DP Company: &nbsp;
+                    <span class="ambig-dp-name">{{ item.dp_company }}</span>
+                    {% if item.dp_isin %}
+                    <span class="isin-mono">
+                        &nbsp;({{ item.dp_isin }})
+                    </span>
+                    {% endif %}
+                    &nbsp;— Qty: <strong>{{ item.dp_qty }}</strong>
+                </div>
+
+                <div style="font-size:11px; color:#555; margin-bottom:8px;">
+                    Select the correct match:
+                </div>
+
+                {% for candidate in item.candidates %}
+                <label class="ambig-option">
+                    <input type="radio"
+                           name="choice_{{ item.dp_key }}"
+                           value="{{ candidate.key }}">
+                    <div>
+                        <div class="ambig-option-name">
+                            {{ candidate.company }}
+                        </div>
+                        {% if candidate.isin %}
+                        <div class="isin-mono">{{ candidate.isin }}</div>
+                        {% endif %}
+                        <div style="font-size:11px; color:#888; margin-top:2px;">
+                            App Qty: {{ candidate.app_qty }}
+                        </div>
+                    </div>
+                    <span class="ambig-option-score">
+                        {{ candidate.score }}% match
+                    </span>
+                </label>
+                {% endfor %}
+
+                <label class="ambig-option ambig-option-none">
+                    <input type="radio"
+                           name="choice_{{ item.dp_key }}"
+                           value="none"
+                           checked>
+                    <div>
+                        <div class="ambig-option-name"
+                             style="color:#e65100;">
+                            ❌ No match (treat as DP Only)
+                        </div>
+                        <div style="font-size:11px; color:#888; margin-top:2px;">
+                            The app doesn't have this company
+                        </div>
+                    </div>
+                </label>
+
+            </div>
+            {% endfor %}
+
+            <div style="margin-top:16px;">
+                <button type="submit" class="btn btn-primary">
+                    ✅ Confirm Choices & Re-run Reconciliation
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% if not ambiguous %}
+<div class="recon-action-bar">
+    <a href="{{ url_for('download_reconciliation_excel',
+               client_id=client_id) }}"
+       class="btn btn-success">
+        📥 Download Excel Report (5 sheets)
+    </a>
+    <a href="{{ url_for('client_page', client_id=client_id) }}"
+       class="btn btn-outline">
+        🔄 Run Again (new PDF)
+    </a>
+    <span class="text-muted" style="font-size:12px;">
+        Report: {{ client_name }}
+        {% if bill_date %} · Statement date: {{ bill_date }}{% endif %}
+    </span>
+</div>
+{% endif %}
+
+{% if not ambiguous and result %}
+
+{% set rn = namespace(list=[]) %}
+{% for row in result.matched + result.mismatched %}
+    {% if row.match_tier and row.match_tier not in ['name_exact'] %}
+        {% set _ = rn.list.append(row) %}
+    {% endif %}
+{% endfor %}
+
+{% if rn.list %}
+<div class="recon-section" style="border-left:4px solid #6a1b9a;">
+    <div class="recon-section-header"
+         style="background:linear-gradient(to right, #f3e5f5, #e1bee7);
+                color:#4a148c;">
+        <span>🔄 Standardize Company Names
+            <small style="font-weight:400; font-size:11px;">
+                (clean up short forms using DP official names)
+            </small>
+        </span>
+        <span class="recon-count-badge">{{ rn.list|length }} available</span>
+    </div>
+
+    <div style="padding:14px 18px;">
+
+        <div style="background:#f3e5f5; border-left:4px solid #6a1b9a;
+                    border-radius:6px; padding:10px 14px; margin-bottom:14px;
+                    font-size:12px; color:#4a148c; line-height:1.6;">
+            ℹ️ <strong>Why standardize?</strong> The app currently uses short
+            forms (like "ABFRL", "IOC") but the DP statement gives the
+            full official names. Renaming will make future AIS / DP
+            reconciliations match instantly via ISIN — no more fuzzy
+            matching needed!
+            <br><br>
+            <strong>What happens:</strong>
+            <ul style="margin:4px 0 0 18px; padding:0;">
+                <li>Company name → renamed in ALL transactions of this client</li>
+                <li>ISIN → auto-filled where currently empty</li>
+                <li>Other clients are NOT affected</li>
+            </ul>
+            <br>
+            <strong>📚 New Day 16:</strong> You can also tick
+            <em>"Also save to Master DB"</em> to remember the short form
+            globally — future imports will match it instantly.
+        </div>
+
+        <form method="POST"
+              action="{{ url_for('apply_renames', client_id=client_id) }}"
+              id="renameFormDp"
+              onsubmit="return confirmRenamesDp();">
+
+            <input type="hidden" name="source" value="dp">
+
+            <div class="table-wrap">
+                <table class="recon-table" style="font-size:12px;">
+                    <thead>
+                        <tr>
+                            <th style="width:40px;">
+                                <input type="checkbox"
+                                       id="selectAllRenamesDp"
+                                       checked
+                                       onchange="toggleAllRenamesDp(this)">
+                            </th>
+                            <th style="width:40px;">#</th>
+                            <th>Current Name (App)</th>
+                            <th style="width:30px;"></th>
+                            <th>Official Name (DP)</th>
+                            <th>ISIN</th>
+                            <th>Match Type</th>
+                            <th style="width:130px;" class="mdb-save-cell">
+                                📚 Master DB
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rn.list %}
+                        {% set dp_name = row.company %}
+                        {% set has_isin = row.isin and row.isin|length == 12 %}
+                        <tr>
+                            <td style="text-align:center;">
+                                <input type="checkbox"
+                                       class="rename-checkbox-dp"
+                                       name="rename_{{ loop.index }}"
+                                       value="APP_PLACEHOLDER|||{{ dp_name }}|||{{ row.isin or '' }}"
+                                       checked>
+                            </td>
+                            <td style="color:#aaa;">{{ loop.index }}</td>
+                            <td style="color:#c62828;">
+                                <em class="app-short-name-dp"
+                                    data-isin="{{ row.isin or '' }}"
+                                    data-dp-name="{{ dp_name }}"
+                                    data-app-company="{{ row.app_company or '' }}"
+                                    data-row-idx="{{ loop.index }}">
+                                    (loading...)
+                                </em>
+                            </td>
+                            <td style="text-align:center; color:#6a1b9a;
+                                       font-size:18px;">→</td>
+                            <td>
+                                <strong style="color:#1b5e20;">
+                                    {{ dp_name }}
+                                </strong>
+                            </td>
+                            <td class="isin-mono">
+                                {{ row.isin if row.isin else '—' }}
+                            </td>
+                            <td>
+                                {% set tier = row.match_tier or '' %}
+                                {% if tier == 'isin' %}
+                                    <span class="tier-badge tier-isin">ISIN</span>
+                                {% elif tier == 'master_db' %}
+                                    <span class="tier-badge tier-master">Master DB</span>
+                                {% elif tier.startswith('fuzzy') %}
+                                    <span class="tier-badge tier-fuzzy">
+                                        Fuzzy {{ tier.replace('fuzzy_','') }}%
+                                    </span>
+                                {% elif tier == 'user_picked' %}
+                                    <span class="tier-badge tier-user">Picked</span>
+                                {% else %}
+                                    <span style="color:#ccc;">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="mdb-save-cell" style="text-align:center;">
+                                {% if has_isin %}
+                                <input type="checkbox"
+                                       class="mdb-save-checkbox-dp"
+                                       name="mdb_save_{{ loop.index }}"
+                                       value="APP_PLACEHOLDER|||{{ dp_name }}|||{{ row.isin }}"
+                                       data-row-idx="{{ loop.index }}"
+                                       title="Save app name as alias for {{ dp_name }} in Master DB">
+                                <span class="mdb-save-label">
+                                    Save alias
+                                </span>
+                                {% else %}
+                                <span style="color:#aaa; font-size:10px;"
+                                      title="ISIN required to save in Master DB">
+                                    no ISIN
+                                </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="margin-top:14px; display:flex; gap:10px;
+                        align-items:center; flex-wrap:wrap;">
+                <button type="submit" class="btn"
+                        style="background:#6a1b9a; color:white;">
+                    🔄 Apply Selected Renames
+                </button>
+                <button type="button" class="btn btn-outline btn-sm"
+                        onclick="checkAllMdbDp()">
+                    📚 Check All Master DB
+                </button>
+                <button type="button" class="btn btn-outline btn-sm"
+                        onclick="uncheckAllMdbDp()">
+                    ❌ Uncheck All Master DB
+                </button>
+                <span class="text-muted" style="font-size:11px;">
+                    Only checked rows will be renamed. Master DB checkboxes are optional.
+                </span>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% endif %}
+
+<div class="recon-summary-grid">
+
+    <div class="recon-stat-card green">
+        <div class="recon-stat-number">
+            {{ result.matched|length if result else 0 }}
+        </div>
+        <div class="recon-stat-label">✅ Matched</div>
+    </div>
+
+    <div class="recon-stat-card yellow">
+        <div class="recon-stat-number">
+            {{ result.mismatched|length if result else 0 }}
+        </div>
+        <div class="recon-stat-label">⚠️ Mismatched</div>
+    </div>
+
+    <div class="recon-stat-card orange">
+        <div class="recon-stat-number">
+            {{ result.dp_only|length if result else 0 }}
+        </div>
+        <div class="recon-stat-label">❌ DP Only</div>
+    </div>
+
+    <div class="recon-stat-card red">
+        <div class="recon-stat-number">
+            {{ result.app_only|length if result else 0 }}
+        </div>
+        <div class="recon-stat-label">❌ App Only</div>
+    </div>
+
+</div>
+
+{% if result %}
+
+<div class="recon-section">
+    <div class="recon-section-header green">
+        <span>✅ Matched Holdings</span>
+        <span class="recon-count-badge">{{ result.matched|length }}</span>
+    </div>
+
+    {% if result.matched %}
+    <div class="table-wrap">
+        <table class="recon-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Company</th>
+                    <th>ISIN</th>
+                    <th>DP Qty</th>
+                    <th>App Qty</th>
+                    <th>Match Type</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in result.matched %}
+                {% set tier = row.match_tier or '' %}
+                <tr>
+                    <td style="color:#aaa;">{{ loop.index }}</td>
+                    <td><strong>{{ row.company }}</strong></td>
+                    <td class="isin-mono">
+                        {{ row.isin if row.isin else '—' }}
+                    </td>
+                    <td>{{ row.dp_qty }}</td>
+                    <td>{{ row.app_qty }}</td>
+                    <td>
+                        {% if tier == 'isin' %}
+                            <span class="tier-badge tier-isin">ISIN</span>
+                        {% elif tier == 'name_exact' %}
+                            <span class="tier-badge tier-name">Name</span>
+                        {% elif tier == 'master_db' %}
+                            <span class="tier-badge tier-master">Master DB</span>
+                        {% elif tier.startswith('fuzzy') %}
+                            <span class="tier-badge tier-fuzzy">
+                                Fuzzy {{ tier.replace('fuzzy_','') }}%
+                            </span>
+                        {% elif tier == 'user_picked' %}
+                            <span class="tier-badge tier-user">You Picked</span>
+                        {% else %}
+                            <span class="tier-badge tier-name">{{ tier or 'Match' }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="recon-empty">No matched holdings.</div>
+    {% endif %}
+</div>
+
+<div class="recon-section">
+    <div class="recon-section-header yellow">
+        <span>⚠️ Quantity Mismatches</span>
+        <span class="recon-count-badge">{{ result.mismatched|length }}</span>
+    </div>
+
+    {% if result.mismatched %}
+    <div class="table-wrap">
+        <table class="recon-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Company</th>
+                    <th>ISIN</th>
+                    <th>DP Qty</th>
+                    <th>App Qty</th>
+                    <th>Difference</th>
+                    <th>Match Type</th>
+                    <th>Likely Cause</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in result.mismatched %}
+                {% set diff = row.dp_qty - row.app_qty %}
+                {% set tier = row.match_tier or '' %}
+                <tr>
+                    <td style="color:#aaa;">{{ loop.index }}</td>
+                    <td><strong>{{ row.company }}</strong></td>
+                    <td class="isin-mono">
+                        {{ row.isin if row.isin else '—' }}
+                    </td>
+                    <td>{{ row.dp_qty }}</td>
+                    <td>{{ row.app_qty }}</td>
+                    <td class="{{ 'diff-positive' if diff > 0 else 'diff-negative' }}">
+                        {{ '+' if diff > 0 else '' }}{{ diff }}
+                    </td>
+                    <td>
+                        {% if tier == 'isin' %}
+                            <span class="tier-badge tier-isin">ISIN</span>
+                        {% elif tier == 'name_exact' %}
+                            <span class="tier-badge tier-name">Name</span>
+                        {% elif tier == 'master_db' %}
+                            <span class="tier-badge tier-master">Master DB</span>
+                        {% elif tier.startswith('fuzzy') %}
+                            <span class="tier-badge tier-fuzzy">
+                                Fuzzy {{ tier.replace('fuzzy_','') }}%
+                            </span>
+                        {% elif tier == 'user_picked' %}
+                            <span class="tier-badge tier-user">You Picked</span>
+                        {% else %}
+                            <span class="tier-badge tier-name">{{ tier or 'Match' }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if row.suggestion %}
+                        <span class="cause-pill">{{ row.suggestion }}</span>
+                        {% elif row.cause %}
+                        <span class="cause-pill">{{ row.cause }}</span>
+                        {% else %}
+                        <span style="color:#ccc;">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="recon-empty">
+        🎉 No quantity mismatches — everything that matched has correct quantities!
+    </div>
+    {% endif %}
+</div>
+
+<div class="recon-section">
+    <div class="recon-section-header orange">
+        <span>❌ In DP Only
+            <small style="font-weight:400; font-size:11px;">
+                (not in app)
+            </small>
+        </span>
+        <span class="recon-count-badge">{{ result.dp_only|length }}</span>
+    </div>
+
+    {% if result.dp_only %}
+
+    <div style="padding:10px 18px 4px;">
+        <div style="background:#fbe9e7; border-left:4px solid #e64a19;
+                    border-radius:6px; padding:10px 12px;
+                    font-size:11px; color:#bf360c; line-height:1.6;">
+            ⚠️ These companies appear in the DP statement but have
+            <strong>no record in the app</strong>. Possible reasons:
+            holdings from before you started using this app,
+            off-market transfers received, or missing BUY entries.
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table class="recon-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Company</th>
+                    <th>ISIN</th>
+                    <th>Total Qty</th>
+                    <th>Free Qty</th>
+                    <th>Pledged Qty</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in result.dp_only %}
+                <tr>
+                    <td style="color:#aaa;">{{ loop.index }}</td>
+                    <td><strong>{{ row.company }}</strong></td>
+                    <td class="isin-mono">
+                        {{ row.isin if row.isin else '—' }}
+                    </td>
+                    <td><strong>{{ row.dp_qty }}</strong></td>
+                    <td>{{ row.free_qty if row.free_qty else row.dp_qty }}</td>
+                    <td>{{ row.pledged_qty if row.pledged_qty else 0 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="recon-empty">
+        ✅ All DP holdings are recorded in the app!
+    </div>
+    {% endif %}
+</div>
+
+<div class="recon-section">
+    <div class="recon-section-header red">
+        <span>❌ In App Only
+            <small style="font-weight:400; font-size:11px;">
+                (not in DP)
+            </small>
+        </span>
+        <span class="recon-count-badge">{{ result.app_only|length }}</span>
+    </div>
+
+    {% if result.app_only %}
+
+    <div style="padding:10px 18px 4px;">
+        <div style="background:#ffebee; border-left:4px solid #c62828;
+                    border-radius:6px; padding:10px 12px;
+                    font-size:11px; color:#b71c1c; line-height:1.6;">
+            ⚠️ These companies are recorded in the app but
+            <strong>not found in the DP statement</strong>. Possible
+            reasons: already sold (but still in app's closing stock),
+            off-market transfer out, or company name mismatch.
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table class="recon-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Company</th>
+                    <th>ISIN</th>
+                    <th>App Qty</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in result.app_only %}
+                <tr>
+                    <td style="color:#aaa;">{{ loop.index }}</td>
+                    <td><strong>{{ row.company }}</strong></td>
+                    <td class="isin-mono">
+                        {{ row.isin if row.isin else '—' }}
+                    </td>
+                    <td><strong>{{ row.app_qty }}</strong></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="recon-empty">
+        ✅ All app holdings are present in the DP statement!
+    </div>
+    {% endif %}
+</div>
+
+{% if not ambiguous %}
+<div class="recon-action-bar">
+    <a href="{{ url_for('download_reconciliation_excel',
+               client_id=client_id) }}"
+       class="btn btn-success">
+        📥 Download Excel Report
+    </a>
+    <a href="{{ url_for('client_page', client_id=client_id) }}"
+       class="btn btn-outline">
+        ← Back to Client
+    </a>
+</div>
+{% endif %}
+
+{% else %}
+
+<div style="text-align:center; padding:40px 20px; color:#888;">
+    <div style="font-size:48px; margin-bottom:12px;">🤔</div>
+    <div style="font-size:15px; font-weight:600;">
+        Resolve the ambiguous matches above first.
+    </div>
+    <div style="font-size:12px; margin-top:6px; color:#aaa;">
+        Once you confirm your choices, the full reconciliation
+        report will appear here.
+    </div>
+</div>
+
+{% endif %}
+
+{% endblock %}
+
+
+{% block extra_script %}
+<script>
+
+    const clientIdDp = {{ client_id }};
+
+    fetch(`/get_companies/${clientIdDp}`)
+        .then(r => r.json())
+        .then(appCompanies => {
+            const appByIsin = {};
+            const appByName = {};
+            appCompanies.forEach(c => {
+                if (c.isin) appByIsin[c.isin.toUpperCase()] = c.name;
+                appByName[c.name.toUpperCase()] = c;
+            });
+
+            document.querySelectorAll('.app-short-name-dp').forEach(el => {
+                const isin = (el.dataset.isin || '').toUpperCase().trim();
+                const dpName = (el.dataset.dpName || '').toUpperCase().trim();
+                const appCompanyFromRow = (el.dataset.appCompany || '').toUpperCase().trim();
+                const rowIdx = el.dataset.rowIdx;
+                let appShortName = '';
+
+                if (appCompanyFromRow) {
+                    appShortName = appCompanyFromRow;
+                }
+
+                if (!appShortName && isin && appByIsin[isin]) {
+                    appShortName = appByIsin[isin];
+                }
+
+                if (!appShortName) {
+                    for (const ac of appCompanies) {
+                        const acUpper = ac.name.toUpperCase().trim();
+                        if (acUpper === dpName) continue;
+                        if (dpName.includes(acUpper) ||
+                            acUpper.length >= 4 &&
+                            computeAcronymDp(dpName).includes(acUpper)) {
+                            appShortName = ac.name;
+                            break;
+                        }
+                    }
+                }
+
+                if (appShortName && appShortName.toUpperCase() !== dpName) {
+                    el.textContent = appShortName;
+                    el.style.fontStyle = 'normal';
+
+                    const row = el.closest('tr');
+                    const checkbox = row.querySelector('.rename-checkbox-dp');
+                    if (checkbox) {
+                        const oldVal = checkbox.value;
+                        checkbox.value = oldVal.replace('APP_PLACEHOLDER',
+                                                       appShortName);
+                    }
+
+                    // Day 16 Phase 5 — fill in master DB checkbox too
+                    const mdbCheckbox = row.querySelector('.mdb-save-checkbox-dp');
+                    if (mdbCheckbox) {
+                        const oldMdbVal = mdbCheckbox.value;
+                        mdbCheckbox.value = oldMdbVal.replace('APP_PLACEHOLDER',
+                                                              appShortName);
+                    }
+                } else {
+                    el.textContent = '(same as DP — skip)';
+                    el.style.color = '#aaa';
+                    el.style.fontStyle = 'italic';
+
+                    const row = el.closest('tr');
+                    const checkbox = row.querySelector('.rename-checkbox-dp');
+                    if (checkbox) {
+                        checkbox.checked = false;
+                        checkbox.disabled = true;
+                    }
+
+                    // Also disable master DB checkbox
+                    const mdbCheckbox = row.querySelector('.mdb-save-checkbox-dp');
+                    if (mdbCheckbox) {
+                        mdbCheckbox.checked = false;
+                        mdbCheckbox.disabled = true;
+                    }
+                }
+            });
+        })
+        .catch(err => {
+            console.error("Could not load app companies:", err);
+        });
+
+    function computeAcronymDp(name) {
+        const skipWords = new Set([
+            'LTD','LIMITED','PVT','PRIVATE','CO','COMPANY',
+            'CORP','INC','THE','AND','OF','IN','FOR',
+            'EQ','NEW','FV','RS'
+        ]);
+        const words = name.toUpperCase()
+                          .replace(/[^\w\s]/g, ' ')
+                          .split(/\s+/)
+                          .filter(w => w && !skipWords.has(w));
+        return words.map(w => w[0]).join('');
+    }
+
+    function toggleAllRenamesDp(masterCheckbox) {
+        document.querySelectorAll('.rename-checkbox-dp').forEach(cb => {
+            if (!cb.disabled) cb.checked = masterCheckbox.checked;
+        });
+    }
+
+    function checkAllMdbDp() {
+        document.querySelectorAll('.mdb-save-checkbox-dp').forEach(cb => {
+            if (!cb.disabled) cb.checked = true;
+        });
+    }
+
+    function uncheckAllMdbDp() {
+        document.querySelectorAll('.mdb-save-checkbox-dp').forEach(cb => {
+            cb.checked = false;
+        });
+    }
+
+    function confirmRenamesDp() {
+        const checked = document.querySelectorAll(
+            '.rename-checkbox-dp:checked:not(:disabled)'
+        );
+        const mdbChecked = document.querySelectorAll(
+            '.mdb-save-checkbox-dp:checked:not(:disabled)'
+        );
+
+        if (checked.length === 0 && mdbChecked.length === 0) {
+            alert("⚠️ Please select at least one company to rename or save to Master DB.");
+            return false;
+        }
+
+        let msg = "🔄 Apply " + checked.length + " name change(s)?\n\n" +
+                  "This will:\n" +
+                  "✓ Rename company in ALL transactions of this client\n" +
+                  "✓ Fill ISIN where currently empty\n";
+
+        if (mdbChecked.length > 0) {
+            msg += "✓ Save " + mdbChecked.length + " alias(es) to Master DB\n";
+        }
+
+        msg += "\nOther clients will NOT be affected.\n\nContinue?";
+
+        return confirm(msg);
+    }
+
+</script>
+{% endblock %}
