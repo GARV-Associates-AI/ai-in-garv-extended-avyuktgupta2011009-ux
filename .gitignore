@@ -1,0 +1,6 @@
+.env 
+__pycache__/ 
+*.pyc 
+capital_gains.db 
+ais_debug_extracted.txt 
+*.log 
