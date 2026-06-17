@@ -613,13 +613,14 @@
                         class="btn btn-outline btn-sm">
                     ⚙️ Security
                 </button>
-                
+
                 {% if transactions %}
-                <a href="{{ url_for('calculate', client_id=client[0], fin_year=fin_year) }}"
-                class="btn btn-primary">⚖️ Calculate</a>
+                <button onclick="openCalcModal()" class="btn btn-primary">
+                    ⚖️ Calculate
+                </button>
                 <a href="{{ url_for('closing_stock_page', client_id=client[0], fin_year=fin_year) }}"
                 class="btn btn-teal">📦 Closing Stock</a>
-                            <button onclick="openReconcileChoiceModal()"
+                <button onclick="openReconcileChoiceModal()"
                         class="btn btn-orange">🔍 Reconcile</button>
                 {% endif %}
             </div>
@@ -929,11 +930,9 @@
             </div>
 
             <div class="calc-bar">
-                <a href="{{ url_for('calculate',
-                           client_id=client[0], fin_year=fin_year) }}"
-                   class="btn btn-primary">
+                <button onclick="openCalcModal()" class="btn btn-primary">
                     ⚖️ Calculate Capital Gains
-                </a>
+                </button>
                 <a href="{{ url_for('closing_stock_page',
                            client_id=client[0], fin_year=fin_year) }}"
                    class="btn btn-teal">
@@ -975,7 +974,7 @@
                         id="tab-btn-fmv">
                     <span class="tab-icon">📅</span>FMV
                 </button>
-                
+
             </div>
 
             <div class="tab-panel active" id="panel-add">
@@ -1324,6 +1323,73 @@
 
 </div>
 
+<!-- ══════════════════════════════════════════════════ -->
+<!-- CALCULATE MODAL WITH DATE FILTER                  -->
+<!-- ══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="calcModal"
+     style="display:none; position:fixed; top:0; left:0;
+            width:100%; height:100%; background:rgba(0,0,0,0.5);
+            z-index:1000; justify-content:center; align-items:center;">
+
+    <div style="background:white; border-radius:14px; padding:32px;
+                width:100%; max-width:460px;
+                box-shadow:0 8px 32px rgba(0,0,0,0.2);
+                position:relative;">
+
+        <button onclick="closeCalcModal()"
+                style="position:absolute; top:14px; right:18px;
+                       font-size:20px; cursor:pointer; color:#999;
+                       background:none; border:none;">✕</button>
+
+        <div style="font-size:18px; font-weight:700;
+                    color:#1a237e; margin-bottom:6px;">
+            ⚖️ Calculate Capital Gains
+        </div>
+        <div style="font-size:13px; color:#888; margin-bottom:20px;">
+            Optionally filter by sell date range.
+            Leave blank to calculate all transactions.
+        </div>
+
+        <div style="background:#e8f5e9; border-left:4px solid #4caf50;
+                    border-radius:6px; padding:10px 14px;
+                    margin-bottom:18px; font-size:12px; color:#1b5e20;">
+            ℹ️ Filter is based on <strong>Sell Date</strong> only.
+            Buy dates are not affected.
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label class="form-label">From Date (optional)</label>
+                <input class="form-control" type="date"
+                       id="calcDateFrom">
+            </div>
+            <div class="form-group">
+                <label class="form-label">To Date (optional)</label>
+                <input class="form-control" type="date"
+                       id="calcDateTo">
+            </div>
+        </div>
+
+        <div style="font-size:11px; color:#888; margin-bottom:18px;">
+            💡 Example: To see only Q1 gains, set
+            From = 01-Apr and To = 30-Jun
+        </div>
+
+        <div class="btn-row" style="margin-bottom:0;">
+            <button onclick="goCalculate()"
+                    class="btn btn-primary" style="flex:1;">
+                ⚖️ Calculate
+            </button>
+            <button onclick="closeCalcModal()"
+                    class="btn btn-outline">
+                Cancel
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<!-- Edit Details Modal -->
 <div class="modal-overlay" id="editDetailsModal"
      style="display:none; position:fixed; top:0; left:0;
             width:100%; height:100%; background:rgba(0,0,0,0.5);
@@ -1420,6 +1486,7 @@
     </div>
 </div>
 
+<!-- Security Modal -->
 <div class="modal-overlay" id="securityModal"
      style="display:none; position:fixed; top:0; left:0;
             width:100%; height:100%; background:rgba(0,0,0,0.5);
@@ -1513,6 +1580,7 @@
     </div>
 </div>
 
+<!-- Loss Modal -->
 <div class="modal-overlay" id="lossModal"
      style="display:none; position:fixed; top:0; left:0;
             width:100%; height:100%; background:rgba(0,0,0,0.5);
@@ -1598,6 +1666,7 @@
     </div>
 </div>
 
+<!-- Reconcile Choice Modal -->
 <div class="modal-overlay" id="reconcileChoiceModal"
      style="display:none; position:fixed; top:0; left:0;
             width:100%; height:100%; background:rgba(0,0,0,0.5);
@@ -1635,7 +1704,6 @@
                  onmouseout="this.style.background='#fff8e1';
                              this.style.transform='translateY(0)';
                              this.style.boxShadow='none';">
-
                 <div style="font-size:40px; margin-bottom:8px;">📄</div>
                 <div style="font-size:15px; font-weight:700;
                             color:#e65100; margin-bottom:6px;">
@@ -1659,7 +1727,6 @@
                  onmouseout="this.style.background='#e3f2fd';
                              this.style.transform='translateY(0)';
                              this.style.boxShadow='none';">
-
                 <div style="font-size:40px; margin-bottom:8px;">📊</div>
                 <div style="font-size:15px; font-weight:700;
                             color:#0d47a1; margin-bottom:6px;">
@@ -1688,6 +1755,7 @@
     </div>
 </div>
 
+<!-- AIS Reconcile Modal -->
 <div class="modal-overlay" id="aisReconcileModal"
      style="display:none; position:fixed; top:0; left:0;
             width:100%; height:100%; background:rgba(0,0,0,0.5);
@@ -1732,10 +1800,7 @@
                     margin-bottom:14px; font-size:11px;
                     color:#5d4037; line-height:1.5;">
             ⚠️ <strong>Important:</strong> The PDF must be the
-            <strong>decrypted</strong> version. If you opened the AIS
-            file in Notepad and saw random characters, it is still
-            encrypted — open it in the AIS Utility from the IT portal
-            and save/print it as PDF first.
+            <strong>decrypted</strong> version.
         </div>
 
         <form method="POST"
@@ -1779,6 +1844,7 @@
     </div>
 </div>
 
+<!-- DP Reconcile Modal -->
 <div class="modal-overlay" id="reconcileModal"
      style="display:none; position:fixed; top:0; left:0;
             width:100%; height:100%; background:rgba(0,0,0,0.5);
@@ -1808,7 +1874,7 @@
             <strong>📋 What this does:</strong>
             <ul>
                 <li>✅ Matched holdings</li>
-                <li>⚠️ Quantity mismatches (with suggested causes)</li>
+                <li>⚠️ Quantity mismatches</li>
                 <li>❌ Companies in DP but missing from app</li>
                 <li>❌ Companies in app but missing from DP</li>
             </ul>
@@ -1832,12 +1898,9 @@
         </div>
 
         <div id="modalReconMethodPdf">
-
             <div class="recon-multi-box">
                 <strong>💡 Multiple Statements?</strong>
-                If the client has demat accounts at
-                <strong>both NSDL and CDSL</strong>, upload
-                <strong>both PDFs together</strong>.
+                Upload <strong>both PDFs together</strong> for NSDL + CDSL.
             </div>
 
             <form method="POST"
@@ -1849,16 +1912,12 @@
                 <input type="hidden" name="fin_year" value="{{ fin_year }}">
 
                 <div class="form-group">
-                    <label class="form-label">
-                        📎 Upload DP Statement(s)
-                    </label>
+                    <label class="form-label">📎 Upload DP Statement(s)</label>
                     <input class="recon-file-input" type="file"
                            name="dp_pdfs" accept=".pdf"
                            multiple required>
-                    <div class="text-muted mt-4"
-                         style="font-size:11px;">
-                        Tip: Hold Ctrl (or Cmd on Mac) to select
-                        multiple PDFs at once.
+                    <div class="text-muted mt-4" style="font-size:11px;">
+                        Hold Ctrl (or Cmd on Mac) to select multiple PDFs.
                     </div>
                 </div>
 
@@ -1875,20 +1934,10 @@
                 • Other brokers → AI fallback<br>
                 • Match by ISIN → exact name → 70%+ fuzzy
             </div>
-
-            <div style="background:#fff8e1; border-left:4px solid #ffa000;
-                        border-radius:6px; padding:10px 12px;
-                        margin-top:14px; font-size:11px;
-                        color:#5d4037; line-height:1.5;">
-                ⚠️ <strong>PDF not working?</strong> Switch to
-                <strong>✏️ Manual (Excel)</strong> above — always works!
-            </div>
         </div>
 
         <div id="modalReconMethodManual" style="display:none;">
-
-            <div style="background:#e3f2fd;
-                        border-left:4px solid #1976d2;
+            <div style="background:#e3f2fd; border-left:4px solid #1976d2;
                         border-radius:6px; padding:12px 14px;
                         margin-bottom:14px; font-size:12px;
                         color:#0d47a1; line-height:1.6;">
@@ -1920,13 +1969,10 @@
                 <input type="hidden" name="fin_year" value="{{ fin_year }}">
 
                 <div class="form-group">
-                    <label class="form-label">
-                        📎 Upload Filled Holdings Excel
-                    </label>
+                    <label class="form-label">📎 Upload Filled Holdings Excel</label>
                     <input class="recon-file-input" type="file"
                            name="holdings_excel"
-                           accept=".xlsx,.xls"
-                           required>
+                           accept=".xlsx,.xls" required>
                 </div>
 
                 <button type="submit"
@@ -1935,22 +1981,12 @@
                     🔍 Run Reconciliation
                 </button>
             </form>
-
-            <div style="background:#f5f5f5; border:1px solid #ddd;
-                        border-radius:6px; padding:10px 12px;
-                        margin-top:14px; font-size:11px;
-                        color:#555; line-height:1.6;">
-                <strong>💡 Tips for filling the template:</strong><br>
-                • Set Bill Date in cell B1 (format: YYYY-MM-DD)<br>
-                • ISIN starts with INE/IN9/INF (12 chars total)<br>
-                • Pledged Qty = 0 if none<br>
-                • Delete example rows before adding real data
-            </div>
         </div>
 
     </div>
 </div>
 
+<!-- Compat Modal -->
 <div class="modal-overlay" id="compatModal"
      style="display:none; position:fixed; top:0; left:0;
             width:100%; height:100%; background:rgba(0,0,0,0.5);
@@ -1969,10 +2005,8 @@
                     color:#1a237e; margin-bottom:6px;">
             📋 PDF Compatibility Guide
         </div>
-        <div style="font-size:12px; color:#888; margin-bottom:20px;
-                    line-height:1.6;">
+        <div style="font-size:12px; color:#888; margin-bottom:20px;">
             The AI extractor works on most broker PDFs but has limitations.
-            Here's what to expect for different document types:
         </div>
 
         <div class="compat-row good">
@@ -1981,10 +2015,7 @@
                 <strong>Daily Contract Notes (Best)</strong>
                 <div class="desc">
                     Single-day broker confirmation with clear
-                    "Net Amount Payable" total.<br><br>
-                    ✓ Full math verification (green/red banner)<br>
-                    ✓ Per-row warnings for anomalies<br>
-                    ✓ Most accurate extraction
+                    "Net Amount Payable" total.
                 </div>
             </div>
         </div>
@@ -1994,8 +2025,7 @@
             <div class="compat-text compat-partial">
                 <strong>Quarterly / Annual Holding Statements</strong>
                 <div class="desc">
-                    Lists many trades across months. AI will extract
-                    transactions but cannot verify totals.
+                    AI will extract but cannot verify totals.
                 </div>
             </div>
         </div>
@@ -2005,9 +2035,7 @@
             <div class="compat-text compat-bad">
                 <strong>DP Holding Statements (NSDL / CDSL)</strong>
                 <div class="desc">
-                    Only lists current holdings, not the trades.<br><br>
-                    💡 Use the <strong>🔍 Reconcile button</strong> instead —
-                    it's specifically designed for them!
+                    Use the 🔍 Reconcile button instead.
                 </div>
             </div>
         </div>
@@ -2023,10 +2051,42 @@
 
 {% endblock %}
 
-
 {% block extra_script %}
 <script>
 
+    // ── Calculate Modal ──────────────────────────────
+    function openCalcModal() {
+        document.getElementById("calcModal").style.display = "flex";
+    }
+
+    function closeCalcModal() {
+        document.getElementById("calcModal").style.display = "none";
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const calcModal = document.getElementById("calcModal");
+        if (calcModal) {
+            calcModal.addEventListener("click", function(e) {
+                if (e.target === this) closeCalcModal();
+            });
+        }
+    });
+
+    function goCalculate() {
+        const dateFrom = document.getElementById("calcDateFrom").value;
+        const dateTo   = document.getElementById("calcDateTo").value;
+
+        let url = "{{ url_for('calculate', client_id=client[0], fin_year=fin_year) }}";
+
+        const params = [];
+        if (dateFrom) params.push("date_from=" + dateFrom);
+        if (dateTo)   params.push("date_to="   + dateTo);
+        if (params.length > 0) url += "?" + params.join("&");
+
+        window.location.href = url;
+    }
+
+    // ── Loss Bar ─────────────────────────────────────
     function toggleLossBar() {
         const body    = document.getElementById("lossBarBody");
         const chevron = document.getElementById("lossChevron");
@@ -2120,23 +2180,22 @@
         const submitBtn  = document.getElementById("lossSubmitBtn");
 
         if (action === "edit") {
-            heading.textContent  = "✏️ Edit Loss";
-            desc.textContent     = "Modify the loss amounts.";
-            form.action          = "/edit_loss/" + lossId;
-            yearInput.value      = lossYear || "";
-            stclInput.value      = stcl || 0;
-            ltclInput.value      = ltcl || 0;
-            notesInput.value     = notes || "";
+            heading.textContent   = "✏️ Edit Loss";
+            desc.textContent      = "Modify the loss amounts.";
+            form.action           = "/edit_loss/" + lossId;
+            yearInput.value       = lossYear || "";
+            stclInput.value       = stcl || 0;
+            ltclInput.value       = ltcl || 0;
+            notesInput.value      = notes || "";
             submitBtn.textContent = "💾 Update Loss";
         } else {
-            heading.textContent  = "📉 Add Old Loss";
-            desc.textContent     = "Enter losses from previous years " +
-                                   "(before app usage).";
-            form.action          = "/add_loss/{{ client[0] }}";
-            yearInput.value      = "";
-            stclInput.value      = "0";
-            ltclInput.value      = "0";
-            notesInput.value     = "";
+            heading.textContent   = "📉 Add Old Loss";
+            desc.textContent      = "Enter losses from previous years.";
+            form.action           = "/add_loss/{{ client[0] }}";
+            yearInput.value       = "";
+            stclInput.value       = "0";
+            ltclInput.value       = "0";
+            notesInput.value      = "";
             submitBtn.textContent = "💾 Save Loss";
         }
         modal.style.display = "flex";
@@ -2151,37 +2210,37 @@
     );
 
     function openSecurityModal(action) {
-        const modal      = document.getElementById("securityModal");
-        const heading    = document.getElementById("modalHeading");
-        const desc       = document.getElementById("modalDescription");
+        const modal       = document.getElementById("securityModal");
+        const heading     = document.getElementById("modalHeading");
+        const desc        = document.getElementById("modalDescription");
         const actionInput = document.getElementById("modalAction");
-        const pwdFields  = document.getElementById("passwordFields");
-        const removeBox  = document.getElementById("removeConfirm");
-        const submitBtn  = document.getElementById("modalSubmitBtn");
-        const newPwd     = document.getElementById("newPwdInput");
-        const confirmPwd = document.getElementById("confirmPwdInput");
+        const pwdFields   = document.getElementById("passwordFields");
+        const removeBox   = document.getElementById("removeConfirm");
+        const submitBtn   = document.getElementById("modalSubmitBtn");
+        const newPwd      = document.getElementById("newPwdInput");
+        const confirmPwd  = document.getElementById("confirmPwdInput");
 
         actionInput.value = action;
         newPwd.value      = "";
         confirmPwd.value  = "";
 
         if (action === "set") {
-            heading.textContent  = "🔒 Set Password";
-            desc.textContent     = "Protect this client with a password.";
+            heading.textContent     = "🔒 Set Password";
+            desc.textContent        = "Protect this client with a password.";
             pwdFields.style.display = "block";
             removeBox.style.display = "none";
             submitBtn.textContent   = "🔒 Set Password";
             newPwd.required = true; confirmPwd.required = true;
         } else if (action === "change") {
-            heading.textContent  = "🔑 Change Password";
-            desc.textContent     = "Enter a new password for this client.";
+            heading.textContent     = "🔑 Change Password";
+            desc.textContent        = "Enter a new password for this client.";
             pwdFields.style.display = "block";
             removeBox.style.display = "none";
             submitBtn.textContent   = "🔑 Update Password";
             newPwd.required = true; confirmPwd.required = true;
         } else if (action === "remove") {
-            heading.textContent  = "🔓 Remove Password";
-            desc.textContent     = "Remove password protection.";
+            heading.textContent     = "🔓 Remove Password";
+            desc.textContent        = "Remove password protection.";
             pwdFields.style.display = "none";
             removeBox.style.display = "block";
             submitBtn.textContent   = "🔓 Remove Password";
@@ -2202,6 +2261,7 @@
 
     document.addEventListener("keydown", function(e) {
         if (e.key === "Escape") {
+            closeCalcModal();
             closeSecurityModal();
             closeLossModal();
             closeCompatModal();
@@ -2371,23 +2431,21 @@
             qtyInput.value = "1";
             if (sttInput) sttInput.value = "0";
         } else if (selectedType === "BONUS") {
-            amountLabel.textContent   = "Total Amount (₹)";
-            amountInput.placeholder   = "0 for bonus";
-            amountInput.value         = "0";
+            amountLabel.textContent = "Total Amount (₹)";
+            amountInput.placeholder = "0 for bonus";
+            amountInput.value       = "0";
             if (sttInput) sttInput.value = "0";
         } else if (selectedType === "GIFT" || selectedType === "INHERIT") {
-            amountLabel.textContent   = "Total Amount (₹) *";
-            amountInput.placeholder   = "Donor's/owner's cost";
+            amountLabel.textContent = "Total Amount (₹) *";
+            amountInput.placeholder = "Donor's/owner's cost";
             if (sttInput) sttInput.value = "0";
         } else {
-            amountLabel.textContent   = "Total Amount (₹) *";
-            amountInput.placeholder   = "Total, not per share";
+            amountLabel.textContent = "Total Amount (₹) *";
+            amountInput.placeholder = "Total, not per share";
         }
     }
 
-    // ════════════════════════════════════════════════════
-    // AUTOCOMPLETE — Day 16 Phase 6 (Master DB integration)
-    // ════════════════════════════════════════════════════
+    // ── Autocomplete ─────────────────────────────────
     const clientId       = {{ client[0] }};
     let   savedCompanies = [];
 
@@ -2411,16 +2469,13 @@
                 return;
             }
 
-            // Step 1: Get matches from CLIENT'S OWN data (instant)
             const clientMatches = savedCompanies.filter(c =>
                 c.name.includes(typed)
             );
 
-            // Step 2: Render client matches immediately
             renderAutocomplete(clientMatches, []);
             autocompleteBox.style.display = "block";
 
-            // Step 3: Debounced fetch from Master DB (slight delay)
             clearTimeout(mdbDebounceTimer);
             if (typed.length >= 2) {
                 mdbDebounceTimer = setTimeout(() => {
@@ -2448,7 +2503,6 @@
             .then(r => r.json())
             .then(data => {
                 const matches = data.matches || [];
-                // Filter out matches already in client data (by ISIN)
                 const clientIsins = new Set(
                     clientMatches.filter(c => c.isin).map(c => c.isin)
                 );
@@ -2470,7 +2524,6 @@
             return;
         }
 
-        // ─── Section 1: Client's own data ───
         if (clientMatches.length > 0) {
             const label = document.createElement("div");
             label.className = "autocomplete-section-label";
@@ -2496,7 +2549,6 @@
             });
         }
 
-        // ─── Section 2: Master DB ───
         if (mdbMatches.length > 0) {
             const label = document.createElement("div");
             label.className = "autocomplete-section-label";
