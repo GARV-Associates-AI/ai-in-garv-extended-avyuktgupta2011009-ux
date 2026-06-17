@@ -154,7 +154,7 @@
         font-size: 13px; padding: 4px 0;
     }
 
-    /* ── B/F Losses Banner — NEW ── */
+    /* ── B/F Losses Banner ── */
     .bf-banner {
         background: linear-gradient(to right, #e8f5e9, #c8e6c9);
         border: 2px solid #4caf50;
@@ -206,7 +206,7 @@
         border: 1px solid #ffcdd2;
     }
 
-    /* ── B/F Application Log Table — NEW ── */
+    /* ── B/F Application Log Table ── */
     .bf-log-table {
         width: 100%;
         font-size: 12px;
@@ -293,6 +293,112 @@
     .badge-bonus   { background: #f3e5f5; color: #6a1b9a; }
     .badge-gift    { background: #fce4ec; color: #880e4f; }
     .badge-inherit { background: #e8eaf6; color: #283593; }
+
+    /* ── Charts Section ── */
+    .charts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .chart-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+        padding: 20px;
+        border-top: 4px solid #1a237e;
+    }
+
+    .chart-card.green  { border-top-color: #2e7d32; }
+    .chart-card.orange { border-top-color: #ff9800; }
+
+    .chart-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: #1a237e;
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .chart-canvas-wrap {
+        position: relative;
+        height: 280px;
+    }
+
+    .chart-empty {
+        height: 280px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #bbb;
+        font-size: 13px;
+        text-align: center;
+    }
+
+    /* ── Date Filter Bar ── */
+    .date-filter-bar {
+        background: white;
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin-bottom: 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+        border-left: 4px solid #1a237e;
+    }
+
+    .date-filter-bar.active {
+        border-left-color: #ff9800;
+        background: #fff8e1;
+    }
+
+    .date-filter-label {
+        font-size: 13px;
+        font-weight: 700;
+        color: #1a237e;
+        white-space: nowrap;
+    }
+
+    .date-filter-bar.active .date-filter-label {
+        color: #e65100;
+    }
+
+    .date-filter-inputs {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        flex: 1;
+    }
+
+    .date-filter-inputs input[type="date"] {
+        padding: 7px 10px;
+        border: 1.5px solid #c5cae9;
+        border-radius: 6px;
+        font-size: 13px;
+        background: white;
+    }
+
+    .date-filter-inputs input[type="date"]:focus {
+        outline: none;
+        border-color: #1a237e;
+    }
+
+    .date-filter-sep {
+        font-size: 12px;
+        color: #888;
+        white-space: nowrap;
+    }
+
+    @media print {
+        .chart-card    { break-inside: avoid; }
+        .date-filter-bar { display: none; }
+    }
 {% endblock %}
 
 {% block content %}
@@ -310,24 +416,68 @@
             <h1>⚖️ Capital Gains Report</h1>
             <div class="text-muted mt-4">
                 PAN: {{ client[2] }} · FY {{ fin_year }} ·
-                {{ rows | length }} transactions analysed ·
+                {{ rows | length }} transaction(s) analysed ·
                 Rules effective 1 Apr 2026
+                {% if date_filter_active %}
+                · <span style="color:#e65100; font-weight:600;">
+                    📅 Filtered: {{ date_from_str or 'start' }}
+                    to {{ date_to_str or 'end' }}
+                  </span>
+                {% endif %}
             </div>
         </div>
         <div class="btn-row" style="margin-bottom:0;">
             <button onclick="window.print()" class="btn btn-outline">
-            🖨️ Print / PDF
-    </button>
-    <a href="{{ url_for('closing_stock_page', client_id=client[0], fin_year=fin_year) }}"
-       class="btn btn-teal">
-        📦 Closing Stock
-    </a>
-    <a href="{{ url_for('itr_schedule_cg', client_id=client[0], fin_year=fin_year) }}"
-       class="btn btn-primary">
-        📋 ITR Schedule CG
-    </a>
-</div>
+                🖨️ Print / PDF
+            </button>
+            <a href="{{ url_for('closing_stock_page', client_id=client[0], fin_year=fin_year) }}"
+               class="btn btn-teal">
+                📦 Closing Stock
+            </a>
+            <a href="{{ url_for('itr_schedule_cg', client_id=client[0], fin_year=fin_year) }}"
+               class="btn btn-primary">
+                📋 ITR Schedule CG
+            </a>
+        </div>
     </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- DATE FILTER BAR                               -->
+<!-- ══════════════════════════════════════════════ -->
+<div class="date-filter-bar {{ 'active' if date_filter_active else '' }}">
+    <div class="date-filter-label">
+        📅 Filter by Sell Date:
+    </div>
+    <div class="date-filter-inputs">
+        <input type="date" id="filterDateFrom"
+               value="{{ date_from_str }}"
+               placeholder="From date">
+        <span class="date-filter-sep">→</span>
+        <input type="date" id="filterDateTo"
+               value="{{ date_to_str }}"
+               placeholder="To date">
+        <button onclick="applyDateFilter()"
+                class="btn btn-primary btn-sm">
+            🔍 Apply
+        </button>
+        {% if date_filter_active %}
+        <button onclick="clearDateFilter()"
+                class="btn btn-outline btn-sm">
+            ✕ Clear Filter
+        </button>
+        {% endif %}
+    </div>
+    {% if date_filter_active %}
+    <div style="font-size:11px; color:#e65100; width:100%; margin-top:4px;">
+        ⚠️ Showing filtered results only.
+        Tax computation reflects only the transactions in this date range.
+    </div>
+    {% else %}
+    <div style="font-size:11px; color:#888;">
+        Leave blank to show all transactions
+    </div>
+    {% endif %}
 </div>
 
 <!-- Errors -->
@@ -340,13 +490,9 @@
 </div>
 {% endif %}
 
-<!-- ══════════════════════════════════════════════════════ -->
-<!-- B/F LOSSES BANNER — NEW (Day 11)                     -->
-<!-- ══════════════════════════════════════════════════════ -->
+<!-- B/F LOSSES BANNER -->
 {% if available_losses %}
-
     {% if apply_bf %}
-        <!-- B/F was APPLIED — show summary -->
         <div class="bf-banner applied">
             <div class="bf-banner-header">
                 <div class="bf-banner-title">
@@ -357,14 +503,12 @@
                     🔄 Recalculate Without B/F
                 </a>
             </div>
-
             <div class="bf-summary">
                 Applied <strong>₹{{ "{:,.2f}".format(tax.bf_stcg_applied) }}</strong>
                 to STCG and
                 <strong>₹{{ "{:,.2f}".format(tax.bf_ltcg_applied) }}</strong>
                 to LTCG from prior year losses.
             </div>
-
             {% if tax.bf_application_log %}
             <table class="bf-log-table">
                 <thead>
@@ -390,9 +534,7 @@
             </table>
             {% endif %}
         </div>
-
     {% else %}
-        <!-- B/F NOT applied — show option to apply -->
         <div class="bf-banner">
             <div class="bf-banner-header">
                 <div class="bf-banner-title">
@@ -403,13 +545,11 @@
                     ✅ Apply B/F Losses & Recalculate
                 </a>
             </div>
-
             <div class="bf-summary">
                 Found <strong>{{ available_losses | length }}</strong>
                 prior year loss record{{ 's' if available_losses|length != 1 else '' }}.
                 Click above to auto-apply them (FIFO order):
             </div>
-
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
                 {% for loss in available_losses %}
                     <span class="bf-tag">
@@ -427,14 +567,12 @@
                     </span>
                 {% endfor %}
             </div>
-
             <div style="font-size:11px; color:#666; margin-top:10px;">
                 ℹ️ Losses are applied in FIFO order (oldest first).
                 STCL is applied before LTCL within each year.
             </div>
         </div>
     {% endif %}
-
 {% endif %}
 
 <!-- Summary Cards -->
@@ -474,13 +612,41 @@
         </div>
         {% endif %}
     </div>
-
     <div class="summary-card orange">
         <div class="s-label">Total STT Paid</div>
         <div class="s-value stt">₹{{ "{:,.2f}".format(tax.total_stt_paid) }}</div>
         <div class="s-note">Not deductible · Sec 40(a)(ib)</div>
     </div>
 </div>
+
+<!-- VISUAL ANALYTICS — CHARTS -->
+{% if rows %}
+<div class="section-title">📈 Visual Analytics</div>
+<div class="charts-grid">
+
+    <div class="chart-card">
+        <div class="chart-title">🍩 STCG vs LTCG Split</div>
+        <div class="chart-canvas-wrap" id="donutWrap">
+            <canvas id="stcgLtcgDonut"></canvas>
+        </div>
+    </div>
+
+    <div class="chart-card green">
+        <div class="chart-title">📊 Top Winners & Losers</div>
+        <div class="chart-canvas-wrap" id="barWrap">
+            <canvas id="winnersLosersBar"></canvas>
+        </div>
+    </div>
+
+    <div class="chart-card orange">
+        <div class="chart-title">📈 Monthly Gains Timeline</div>
+        <div class="chart-canvas-wrap" id="lineWrap">
+            <canvas id="monthlyTimeline"></canvas>
+        </div>
+    </div>
+
+</div>
+{% endif %}
 
 <!-- Tax Computation -->
 <div class="section-title">🧾 Tax Computation</div>
@@ -489,9 +655,7 @@
     {% if apply_bf and tax.bf_ltcg_applied > 0 %}
     <div class="tax-row bf-row">
         <span class="t-label">📉 Brought Forward Loss applied to LTCG</span>
-        <span class="t-amount">
-            -₹{{ "{:,.2f}".format(tax.bf_ltcg_applied) }}
-        </span>
+        <span class="t-amount">-₹{{ "{:,.2f}".format(tax.bf_ltcg_applied) }}</span>
     </div>
     {% endif %}
 
@@ -517,9 +681,7 @@
     {% if apply_bf and tax.bf_stcg_applied > 0 %}
     <div class="tax-row bf-row">
         <span class="t-label">📉 Brought Forward Loss applied to STCG</span>
-        <span class="t-amount">
-            -₹{{ "{:,.2f}".format(tax.bf_stcg_applied) }}
-        </span>
+        <span class="t-amount">-₹{{ "{:,.2f}".format(tax.bf_stcg_applied) }}</span>
     </div>
     {% endif %}
 
@@ -553,11 +715,10 @@
     was paid on these transactions. Per <strong>Section 40(a)(ib)</strong>
     of the Income Tax Act, STT is <strong>NOT deductible</strong> from
     capital gains. It is shown above purely for client records and audit trail.
-    STT is reflected separately in the table below for transparency.
 </div>
 {% endif %}
 
-<!-- Carry Forward to NEXT year -->
+<!-- Carry Forward -->
 {% if tax.ltcl_carryforward > 0 or tax.stcl_carryforward > 0 %}
 <div class="carry-box">
     <h4>⏩ New Losses to Carry Forward (up to 8 AYs)</h4>
@@ -583,7 +744,14 @@
 <!-- Detailed Table -->
 <div class="section-title">📋 FIFO Matched Lots</div>
 <div class="detail-card">
-    <div class="d-title">Transaction-wise Capital Gains</div>
+    <div class="d-title">
+        Transaction-wise Capital Gains
+        {% if date_filter_active %}
+        <span style="font-size:12px; font-weight:400; opacity:0.85; margin-left:10px;">
+            📅 {{ date_from_str or 'start' }} → {{ date_to_str or 'end' }}
+        </span>
+        {% endif %}
+    </div>
     <div class="scroll-table">
         <table>
             <thead>
@@ -615,7 +783,6 @@
                     <td>₹{{ "%.2f" | format(row.buy_price_per_share) }}</td>
                     <td>₹{{ "{:,.2f}".format(row.adjusted_cost) }}</td>
                     <td>₹{{ "{:,.2f}".format(row.adjusted_proceeds) }}</td>
-
                     <td class="stt-cell">
                         {% if row.stt_paid and row.stt_paid > 0 %}
                             ₹{{ "{:,.2f}".format(row.stt_paid) }}
@@ -623,7 +790,6 @@
                             <span style="color:#ccc; font-weight:400;">—</span>
                         {% endif %}
                     </td>
-
                     <td>
                         {% if row.fmv_31_jan_2018 %}
                             ₹{{ "%.2f" | format(row.fmv_31_jan_2018) }}
@@ -669,9 +835,7 @@
     </div>
 </div>
 
-<!-- ════════════════════════════════════════════════
-     CLOSING STOCK SECTION
-════════════════════════════════════════════════ -->
+<!-- CLOSING STOCK SECTION -->
 <div class="section-title">📦 Closing Stock / Unsold Holdings</div>
 <div class="detail-card">
     <div class="d-title">
@@ -807,12 +971,256 @@
 {% endblock %}
 
 {% block extra_script %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
 <script>
+
+// ── Date Filter Functions ────────────────────────
+function applyDateFilter() {
+    const dateFrom = document.getElementById("filterDateFrom").value;
+    const dateTo   = document.getElementById("filterDateTo").value;
+
+    let url = "{{ url_for('calculate', client_id=client[0], fin_year=fin_year) }}";
+
+    const params = [];
+    if (dateFrom) params.push("date_from=" + dateFrom);
+    if (dateTo)   params.push("date_to="   + dateTo);
+    {% if apply_bf %}
+    params.push("apply_bf=yes");
+    {% endif %}
+    if (params.length > 0) url += "?" + params.join("&");
+
+    window.location.href = url;
+}
+
+function clearDateFilter() {
+    let url = "{{ url_for('calculate', client_id=client[0], fin_year=fin_year) }}";
+    {% if apply_bf %}
+    url += "?apply_bf=yes";
+    {% endif %}
+    window.location.href = url;
+}
+
+// Allow pressing Enter in date fields to apply filter
+document.addEventListener("DOMContentLoaded", function() {
+    ["filterDateFrom", "filterDateTo"].forEach(function(id) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener("keydown", function(e) {
+                if (e.key === "Enter") applyDateFilter();
+            });
+        }
+    });
+});
+
+// ── Closing Stock Tabs ───────────────────────────
 function showCSTab(tabName, clickedBtn) {
     document.querySelectorAll('.cs-panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.cs-tab').forEach(b => b.classList.remove('active'));
     document.getElementById('cs-panel-' + tabName).classList.add('active');
     clickedBtn.classList.add('active');
 }
+
+// ── Chart Data ───────────────────────────────────
+{% if rows %}
+
+const chartRows = [
+    {% for row in rows %}
+    {
+        company: "{{ row.company | e }}",
+        sell_date: "{{ row.sell_date }}",
+        profit_loss: {{ row.profit_loss }},
+        gain_type: "{{ row.gain_type }}"
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+
+// Chart 1: STCG vs LTCG Donut
+(function() {
+    let ltcgTotal = 0, stcgTotal = 0;
+    chartRows.forEach(r => {
+        if (r.gain_type === 'LTCG') ltcgTotal += r.profit_loss;
+        else stcgTotal += r.profit_loss;
+    });
+
+    const ctx = document.getElementById('stcgLtcgDonut');
+    if (!ctx) return;
+
+    if (ltcgTotal === 0 && stcgTotal === 0) {
+        document.getElementById('donutWrap').innerHTML =
+            '<div class="chart-empty">No data to display</div>';
+        return;
+    }
+
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['LTCG', 'STCG'],
+            datasets: [{
+                data: [Math.abs(ltcgTotal), Math.abs(stcgTotal)],
+                backgroundColor: ['#4caf50', '#ff9800'],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { font: { size: 12 }, padding: 14 }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            const val = ctx.parsed;
+                            return ctx.label + ': ₹' + val.toLocaleString('en-IN', { maximumFractionDigits: 0 });
+                        }
+                    }
+                }
+            }
+        }
+    });
+})();
+
+// Chart 2: Top Winners & Losers
+(function() {
+    const byCompany = {};
+    chartRows.forEach(r => {
+        if (!byCompany[r.company]) byCompany[r.company] = 0;
+        byCompany[r.company] += r.profit_loss;
+    });
+
+    const sorted   = Object.entries(byCompany).sort((a, b) => b[1] - a[1]);
+    const winners  = sorted.filter(x => x[1] > 0).slice(0, 5);
+    const losers   = sorted.filter(x => x[1] < 0).slice(-5).reverse();
+    const combined = [...winners, ...losers];
+
+    const ctx = document.getElementById('winnersLosersBar');
+    if (!ctx) return;
+
+    if (combined.length === 0) {
+        document.getElementById('barWrap').innerHTML =
+            '<div class="chart-empty">No data to display</div>';
+        return;
+    }
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: combined.map(x => x[0].length > 18 ? x[0].slice(0, 16) + '…' : x[0]),
+            datasets: [{
+                label: 'P/L (₹)',
+                data: combined.map(x => x[1]),
+                backgroundColor: combined.map(x => x[1] >= 0 ? '#4caf50' : '#f44336'),
+                borderRadius: 4
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            const val  = ctx.parsed.x;
+                            const sign = val >= 0 ? '+' : '−';
+                            return sign + '₹' + Math.abs(val).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        callback: function(v) {
+                            if (Math.abs(v) >= 100000) return '₹' + (v/100000).toFixed(1) + 'L';
+                            if (Math.abs(v) >= 1000)   return '₹' + (v/1000).toFixed(0) + 'K';
+                            return '₹' + v;
+                        }
+                    }
+                },
+                y: { ticks: { font: { size: 11 } } }
+            }
+        }
+    });
+})();
+
+// Chart 3: Monthly Gains Timeline
+(function() {
+    const monthlyData = {};
+    const monthLabels = ['Apr','May','Jun','Jul','Aug','Sep',
+                         'Oct','Nov','Dec','Jan','Feb','Mar'];
+    monthLabels.forEach(m => monthlyData[m] = 0);
+
+    chartRows.forEach(r => {
+        if (!r.sell_date) return;
+        const parts = r.sell_date.split('-');
+        if (parts.length !== 3) return;
+        const m = parseInt(parts[1]);
+        const fyMonthIdx = m >= 4 ? m - 4 : m + 8;
+        monthlyData[monthLabels[fyMonthIdx]] += r.profit_loss;
+    });
+
+    const ctx = document.getElementById('monthlyTimeline');
+    if (!ctx) return;
+
+    const dataValues = monthLabels.map(m => monthlyData[m]);
+    if (!dataValues.some(v => v !== 0)) {
+        document.getElementById('lineWrap').innerHTML =
+            '<div class="chart-empty">No monthly data to display</div>';
+        return;
+    }
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: monthLabels,
+            datasets: [{
+                label: 'Net Gain/Loss',
+                data: dataValues,
+                borderColor: '#1a237e',
+                backgroundColor: 'rgba(26, 35, 126, 0.1)',
+                tension: 0.3,
+                fill: true,
+                pointBackgroundColor: dataValues.map(v => v >= 0 ? '#4caf50' : '#f44336'),
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            const val  = ctx.parsed.y;
+                            const sign = val >= 0 ? '+' : '−';
+                            return sign + '₹' + Math.abs(val).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    ticks: {
+                        callback: function(v) {
+                            if (Math.abs(v) >= 100000) return '₹' + (v/100000).toFixed(1) + 'L';
+                            if (Math.abs(v) >= 1000)   return '₹' + (v/1000).toFixed(0) + 'K';
+                            return '₹' + v;
+                        }
+                    }
+                }
+            }
+        }
+    });
+})();
+
+{% endif %}
 </script>
 {% endblock %}
