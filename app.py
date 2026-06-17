@@ -855,6 +855,65 @@ def calculate(client_id, fin_year):
 
     output_rows, errors = run_fifo(transactions, fmv_data)
 
+    # ── DATE FILTER (by sell date) ──────────────────────
+    date_from_str = request.args.get("date_from", "").strip()
+    date_to_str   = request.args.get("date_to",   "").strip()
+
+    date_from = None
+    date_to   = None
+    date_filter_active = False
+
+    if date_from_str:
+        try:
+            date_from = datetime.strptime(date_from_str, "%Y-%m-%d").date()
+            date_filter_active = True
+        except ValueError:
+            flash("⚠️ Invalid 'From Date' — ignored.", "warning")
+            date_from_str = ""
+
+    if date_to_str:
+        try:
+            date_to = datetime.strptime(date_to_str, "%Y-%m-%d").date()
+            date_filter_active = True
+        except ValueError:
+            flash("⚠️ Invalid 'To Date' — ignored.", "warning")
+            date_to_str = ""
+
+    if date_filter_active and output_rows:
+        from datetime import date as date_cls
+
+        def parse_sell_date(row):
+            # sell_date is stored as "DD-MM-YYYY" string in output_rows
+            try:
+                return datetime.strptime(row["sell_date"], "%d-%m-%Y").date()
+            except Exception:
+                return None
+
+        filtered = []
+        for row in output_rows:
+            sd = parse_sell_date(row)
+            if sd is None:
+                continue
+            if date_from and sd < date_from:
+                continue
+            if date_to and sd > date_to:
+                continue
+            filtered.append(row)
+
+        if not filtered:
+            flash(
+                f"⚠️ No transactions found with sell date between "
+                f"{date_from_str or 'start'} and {date_to_str or 'end'}. "
+                f"Showing all results instead.",
+                "warning"
+            )
+            date_filter_active = False
+            date_from_str = ""
+            date_to_str   = ""
+        else:
+            output_rows = filtered
+    # ── END DATE FILTER ─────────────────────────────────
+
     if not output_rows:
         flash("Calculation produced no results. Check your transactions.", "error")
         return redirect(url_for("client_page",
@@ -928,22 +987,24 @@ def calculate(client_id, fin_year):
 
     return render_template(
         "result.html",
-        client           = client,
-        fin_year         = fin_year,
-        rows             = output_rows,
-        tax              = tax_summary,
-        errors           = errors,
-        missing_fmv      = missing_fmv,
-        closing_year_end = closing_year_end,
-        summary_year_end = summary_year_end,
-        closing_today    = closing_today,
-        summary_today    = summary_today,
-        year_end_date    = year_end_date,
-        today_str        = today_str,
-        available_losses = available_losses,
-        apply_bf         = apply_bf,
+        client             = client,
+        fin_year           = fin_year,
+        rows               = output_rows,
+        tax                = tax_summary,
+        errors             = errors,
+        missing_fmv        = missing_fmv,
+        closing_year_end   = closing_year_end,
+        summary_year_end   = summary_year_end,
+        closing_today      = closing_today,
+        summary_today      = summary_today,
+        year_end_date      = year_end_date,
+        today_str          = today_str,
+        available_losses   = available_losses,
+        apply_bf           = apply_bf,
+        date_from_str      = date_from_str,
+        date_to_str        = date_to_str,
+        date_filter_active = date_filter_active,
     )
-
 
 # ============================================================
 # CLOSING STOCK PAGE
